@@ -107,8 +107,9 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     auto current_frame = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float> duration = current_frame - last_frame;
     float frame_time = duration.count();
-
     last_frame = current_frame;
+
+    g_path_tracer->OnUpdate(frame_time);
 
     SDL_RenderClear(g_renderer);
 
@@ -190,9 +191,14 @@ void DrawFramebuffer(int width, int height) {
         }
     };
 
-    // 4. Launch Threads
-    // Only launch as many threads as you have cores.
+// 4. Launch Threads
+// Only launch as many threads as you have cores.
+#ifndef NDEBUG
     unsigned int core_count = std::thread::hardware_concurrency();
+#else
+    // make it easier to debug!
+    unsigned int core_count = 1;
+#endif
     std::vector<std::thread> threads;
 
     // We run (core_count - 1) threads, and let the main thread help too

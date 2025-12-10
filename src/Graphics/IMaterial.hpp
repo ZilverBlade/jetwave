@@ -9,7 +9,6 @@ struct MaterialInput {
 };
 struct MaterialOutput {
     glm::vec3 albedo_color = {};
-    float specular_factor = {};
     glm::vec3 specular_color = {};
     float specular_power = {};
 };

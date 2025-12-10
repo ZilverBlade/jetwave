@@ -33,11 +33,7 @@ public:
             .max = m_center + r,
         };
     }
-    DOB_NODISCARD glm::vec3 GetPosition() const override {
-        return m_center;
-    }
 
-private:
     glm::vec3 m_center;
     float m_radius2;
 };

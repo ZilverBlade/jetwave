@@ -25,7 +25,11 @@ public:
         }
     }
 
+    Actor& GetActorById(ActorId id);
+
 private:
+    ActorId AllocateActor(Actor** out_actor);
+
     std::vector<Actor> m_actors = {};
     std::vector<ActorId> m_alive = {};
     std::vector<ActorId> m_tombstones = {};

@@ -3,10 +3,10 @@
 #include <src/Core.hpp>
 namespace devs_out_of_bounds {
 struct LightInput {
-    glm::vec3 camera_position = {};
-    glm::vec3 fragment_position = {};
-    glm::vec3 fragment_normal = {};
-    glm::vec3 fragment_normal = {};
+    glm::vec3 eye = {};
+    glm::vec3 P = {};
+    glm::vec3 V = {};
+    glm::vec3 N = {};
     float specular_power = {};
 };
 struct LightOutput {
