@@ -200,7 +200,7 @@ void DrawFramebuffer(int width, int height) {
 
 // 4. Launch Threads
 // Only launch as many threads as you have cores.
-#ifndef NDEBUG
+#ifdef NDEBUG
     unsigned int core_count = std::thread::hardware_concurrency();
 #else
     // make it easier to debug!
