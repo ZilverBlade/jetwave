@@ -1,0 +1,20 @@
+# build directories
+build-win/
+build/
+out/
+
+.gradle/
+.vs/
+.vscode/
+.cache/
+CMakeConfig.json
+
+# build files
+.cxx/
+*.obj
+*.exe
+*.dll
+*.jar
+*.so
+*.a
+*.lib
