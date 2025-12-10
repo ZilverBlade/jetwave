@@ -96,7 +96,7 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
     }
     case SDL_EVENT_KEY_DOWN: {
         if (event->key.key == SDLK_B && !event->key.repeat) {
-            g_path_tracer->m_parameters.max_light_bounces = (g_path_tracer->m_parameters.max_light_bounces + 1) % 4;
+            g_path_tracer->m_parameters.max_light_bounces = (g_path_tracer->m_parameters.max_light_bounces + 1) % 5;
         }
         return SDL_APP_CONTINUE; 
     }

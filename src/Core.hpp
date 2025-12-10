@@ -1,7 +1,11 @@
 #pragma once
+#define GLM_ENABLE_EXPERIMENTAL 1
+
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <glm/glm.hpp>
+#include <glm/gtx/rotate_vector.hpp>
 
 /*
  * Architecture and bitness detection
@@ -127,14 +131,27 @@ struct Pointf {
     DOOB_NODISCARD DOOB_FORCEINLINE bool operator!=(const Pointf&) const = default;
 };
 
+template <typename>
+struct FunctionPtr_;
+
+// partial specialization for function types
+template <typename Ret, typename... Args>
+struct FunctionPtr_<Ret(Args...)> {
+    using Type = Ret (*)(Args...);
+};
+
+// convenient alias
+template <typename Signature>
+using FunctionPtr = typename FunctionPtr_<Signature>::Type;
+
 using Pixel = uint32_t;
-#define DOOB_WRITE_PIXEL(r, g, b, a)                                                                                    \
+#define DOOB_WRITE_PIXEL(r, g, b, a)                                                                                   \
     Pixel(((static_cast<uint32_t>(r) & 0xFFU) << 24) | ((static_cast<uint32_t>(g) & 0xFFU) << 16) |                    \
           ((static_cast<uint32_t>(b) & 0xFFU) << 8) | (static_cast<uint32_t>(a)) & 0xFFU)
 
 #define DOOB_WRITE_PIXEL_F32(r, g, b, a) DOOB_WRITE_PIXEL((r) * 255.0f, (g) * 255.0f, (b) * 255.0f, (a) * 255.0f)
 
-#define DOOB_MAKE_ENUM_FLAGS(Enum, Int)                                                                                 \
+#define DOOB_MAKE_ENUM_FLAGS(Enum, Int)                                                                                \
     static Enum operator|(Enum lhs, Enum rhs) {                                                                        \
         return static_cast<Enum>(static_cast<Int>(lhs) | static_cast<Int>(rhs));                                       \
     }                                                                                                                  \

@@ -4,7 +4,7 @@
 
 namespace devs_out_of_bounds {
 struct PathTracerParameters {
-    int max_light_bounces = 3;
+    int max_light_bounces = 1;
 };
 class PathTracer : NoCopy, NoMove {
 public:
@@ -28,13 +28,14 @@ private:
 
     DOOB_NODISCARD bool IntersectFirstActor(
         const Ray& ray, Intersection* /*nullable*/ out_intersection, DrawableActor* /*nullable*/ out_actor) const;
+    DOOB_NODISCARD bool IntersectAnyActor(const Ray& ray) const;
     DOOB_NODISCARD glm::vec3 ShadeActor(const DrawableActor& actor, const LightInput& shading_input) const;
     DOOB_NODISCARD glm::vec3 SampleSky(const glm::vec3& R) const;
 
 private:
     // Scene
-    ActorId m_light_actor;
     ActorId m_plane_actor;
+    ActorId m_light_actor;
 
     std::vector<DrawableActor> m_drawable_actors = {};
     std::vector<LightActor> m_light_actors = {};

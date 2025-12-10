@@ -7,29 +7,38 @@ public:
     Sphere(const glm::vec3& center, float radius) : m_center(center), m_radius2(radius * radius) {}
 
     DOOB_NODISCARD bool Intersect(const Ray& ray, Intersection* out_intersection) const override {
+        const glm::vec3 oc = ray.origin - m_center;
 
-        const glm::vec3 origin = ray.origin - m_center;
-        // const float A = glm::dot(ray_direction, ray_direction);
-        const float B = 2.0f * glm::dot(ray.direction, origin);
-        const float C = glm::dot(origin, origin) - m_radius2;
+        //const float a = glm::dot(ray.direction, ray.direction);
+        const float b = 2.0f * glm::dot(ray.direction, oc);
+        const float c = glm::dot(oc, oc) - m_radius2;
 
-        float discriminant = B * B - 4.0f * C;
+        const float discriminant = b * b - 4.0f * c;
+
         if (discriminant < 0.0f) {
             return false;
         }
-        const float two_t0 = -B - glm::sqrt(discriminant);
-        // if it's behind us, do not intersect.
-        if (two_t0 < 0.0f) {
-            // Sidenote: this also does backface culling, if there are 2 intersections,
-            // dont care and just take the closest
+
+        float t = (-b - glm::sqrt(discriminant)) * 0.5f;
+
+        // If t0 is invalid (behind us or too far), try t1 (the exit point)
+        if (t < ray.t_min || t > ray.t_max) {
+            t = (-b + glm::sqrt(discriminant)) * 0.5f;
+            
+            // If t1 is ALSO invalid, then we truly missed (or are entirely behind/past it)
+            if (t < ray.t_min || t > ray.t_max) {
+                return false;
+            }
             return false;
         }
+
         if (out_intersection) {
-            out_intersection->t = two_t0 * 0.5f;
-            out_intersection->normal = glm::normalize(ray.direction * out_intersection->t + origin);
-            out_intersection->barycentric = { 0.0f, 0.0f };
+            out_intersection->t = t;
+            out_intersection->normal = glm::normalize(oc + ray.direction * t);
+            out_intersection->barycentric = { 0.0f, 0.0f }; // Spheres don't use barycentrics
             out_intersection->primitive = 0;
         }
+
         return true;
     }
     DOOB_NODISCARD AABB GetAABB() const override {

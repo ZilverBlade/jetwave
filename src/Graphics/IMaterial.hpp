@@ -1,5 +1,5 @@
 #pragma once
-#include <glm/glm.hpp>
+
 #include <src/Core.hpp>
 namespace devs_out_of_bounds {
 struct MaterialInput {

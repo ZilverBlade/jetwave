@@ -1,5 +1,4 @@
 #pragma once
-#include <glm/glm.hpp>
 #include <src/Core.hpp>
 namespace devs_out_of_bounds {
 struct Intersection {
@@ -11,6 +10,8 @@ struct Intersection {
 };
 struct Ray {
     glm::vec3 origin = {};
+    float t_min = 0.0f;
     glm::vec3 direction = {};
+    float t_max = INFINITY;
 };
 } // namespace devs_out_of_bounds

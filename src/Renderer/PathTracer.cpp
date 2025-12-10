@@ -8,7 +8,7 @@
 #include <random>
 
 namespace devs_out_of_bounds {
-static BasicMaterial g_default_mat = BasicMaterial({ 1.0f, 0.0f, 0.0f }, { 1, 1, 1 }, 64.0f);
+static BasicMaterial g_default_mat = BasicMaterial({ 1.0f, 1.0f, 1.0f }, { 1, 1, 1 }, 64.0f);
 static GridMaterial g_grid_mat = GridMaterial();
 
 
@@ -32,9 +32,12 @@ void PathTracer::OnResize(int new_width, int new_height) {
 void PathTracer::OnUpdate(float frame_time) {
     static float accum = 0.0f;
 
-    {
-        PointLight* light = static_cast<PointLight*>(m_scene->GetActorById(m_light_actor).GetLight());
-        light->m_position = glm::vec3(4.0f * glm::cos(accum), 2.0f, 4.0f * glm::sin(accum));
+    int index = 0;
+    for (auto& [light_obj] : m_light_actors) {
+        float phase = index / static_cast<float>(m_light_actors.size()) * glm::two_pi<float>();
+        PointLight* light = static_cast<PointLight*>(light_obj);
+        light->m_position = glm::vec3(4.0f * glm::cos(accum + phase), 2.0f, 4.0f * glm::sin(accum + phase));
+        ++index;
     }
     accum += frame_time;
 }
@@ -62,7 +65,7 @@ Pixel PathTracer::Evaluate(int x, int y) const {
         const LightInput light_input{
             .eye = ray.origin,
             .P = P,
-            .V = ray.origin - P,
+            .V = glm::normalize(ray.origin - P),
             .N = intersection.normal,
         };
         color_accumulated = this->ShadeActor(actor, light_input);
@@ -72,38 +75,49 @@ Pixel PathTracer::Evaluate(int x, int y) const {
 }
 void PathTracer::RebuildAccelerationStructures() {}
 void PathTracer::LoadScene() {
-    static std::vector<std::pair<Sphere, BasicMaterial>> objects;
-    objects.clear();
-    objects.reserve(100);
+    // static std::vector<std::pair<Sphere, BasicMaterial>> objects;
+    // objects.clear();
+    // objects.reserve(100);
 
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> posDist(-10.0f, 10.0f); // Range -10 to 10
-    std::uniform_real_distribution<float> radDist(0.5f, 1.5f);    // Radius 0.5 to 1.5
-    std::uniform_real_distribution<float> colDist(0.0f, 1.0f);    // Colour 0.0 to 1.0
+    // std::random_device rd;
+    // std::mt19937 gen(rd());
+    // std::uniform_real_distribution<float> posDist(-10.0f, 10.0f); // Range -10 to 10
+    // std::uniform_real_distribution<float> radDist(0.5f, 1.5f);    // Radius 0.5 to 1.5
+    // std::uniform_real_distribution<float> colDist(0.0f, 1.0f);    // Colour 0.0 to 1.0
 
-    for (int i = 0; i < 100; ++i) {
-        float x = posDist(gen);
-        float y = posDist(gen);
-        float z = posDist(gen) + 5.0f; // Offset Z so they are in front of camera
-        float radius = radDist(gen);
+    // for (int i = 0; i < 100; ++i) {
+    //     float x = posDist(gen);
+    //     float y = posDist(gen);
+    //     float z = posDist(gen) + 5.0f; // Offset Z so they are in front of camera
+    //     float radius = radDist(gen);
 
-        float r = colDist(gen);
-        float g = colDist(gen);
-        float b = colDist(gen);
+    //    float r = colDist(gen);
+    //    float g = colDist(gen);
+    //    float b = colDist(gen);
 
-        objects.emplace_back(Sphere({ x, y, z }, radius), BasicMaterial({ r, g, b }, { 1, 1, 1 }, 64.f));
-    }
-
-    for (auto& [shape, material] : objects) {
-        ActorId id = m_scene->NewDrawableActor(&shape, &material);
-    }
+    //    objects.emplace_back(Sphere({ x, y, z }, radius), BasicMaterial({ r, g, b }, { 1, 1, 1 }, 64.f));
+    //}
+    //
+    // for (auto& [shape, material] : objects) {
+    //    ActorId id = m_scene->NewDrawableActor(&shape, &material);
+    //}
 
     static Plane plane1 = Plane({ 0, 1, 0 }, { 0, -1, 0 });
     m_plane_actor = m_scene->NewDrawableActor(&plane1, &g_grid_mat);
 
-    static PointLight light1 = PointLight({ 0, 10, 0 }, { 4.f, 8.f, 8.f });
-    m_light_actor = m_scene->NewLightActor(&light1);
+    static Sphere sphere1 = Sphere({ 0, 0.0f, 5.0f }, 1.0f);
+    ActorId sphere_actor = m_scene->NewDrawableActor(&sphere1, &g_default_mat);
+
+    std::vector<glm::vec3> light_colors{
+        { 1.f, .1f, .1f }, { .1f, .1f, 1.f }, { .1f, 1.f, .1f }, { 1.f, 1.f, .1f }, { .1f, 1.f, 1.f }, { 1.f, 1.f, 1.f }
+    };
+    static std::vector<PointLight> point_lights;
+    point_lights.clear();
+    point_lights.reserve(light_colors.size());
+    for (int i = 0; i < light_colors.size(); ++i) {
+        point_lights.push_back(PointLight({ 0, 10, 0 }, light_colors[i] * 10.0f));
+        m_light_actor = m_scene->NewLightActor(&point_lights.back());
+    }
 
     m_drawable_actors.clear();
     m_light_actors.clear();
@@ -143,6 +157,15 @@ bool PathTracer::IntersectFirstActor(const Ray& ray, Intersection* out_intersect
     return true;
 }
 
+DOOB_NODISCARD bool PathTracer::IntersectAnyActor(const Ray& ray) const {
+    for (const auto& actor : m_drawable_actors) {
+        if (actor.shape->Intersect(ray, nullptr)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 glm::vec3 PathTracer::ShadeActor(const DrawableActor& actor, const LightInput& shading_input) const {
     DrawableActor curr_actor = actor;
     LightInput curr_shading_input = shading_input;
@@ -162,14 +185,28 @@ glm::vec3 PathTracer::ShadeActor(const DrawableActor& actor, const LightInput& s
 
         // DIRECT LIGHTING
         {
-
             for (const auto& [light_obj] : m_light_actors) {
                 LightOutput result =
-                    light_obj->Evaluate(curr_shading_input, { .specular_power = material.specular_power });
+                    light_obj->Evaluate(curr_shading_input, { .specular_power = material.specular_power },
+                        {
+                            .userdata = reinterpret_cast<const void*>(this),
+                            .fn_shadow_check =
+                                [](const Ray& ray, const void* userdata) {
+                                    return !reinterpret_cast<const PathTracer*>(userdata)->IntersectAnyActor(ray);
+                                },
+                            .seed = 0U,
+                        });
                 diffuse += result.diffuse;
                 specular += result.specular;
             }
         }
+
+        float fresnel = glm::max(glm::dot(curr_shading_input.V, curr_shading_input.N), 0.0f);
+        float f2 = fresnel * fresnel;
+        float f4 = f2 * f2;
+        float f5 = f4 * fresnel;
+        float kD = fresnel;
+
         // SPECULAR LIGHTING (Reflections)
         if (b < m_parameters.max_light_bounces) {
             glm::vec3 R = glm::reflect(-curr_shading_input.V, curr_shading_input.N);
@@ -187,13 +224,14 @@ glm::vec3 PathTracer::ShadeActor(const DrawableActor& actor, const LightInput& s
             } else {
                 const glm::vec3 P = intersection.t * ray.direction + ray.origin;
                 curr_shading_input.P = P;
-                curr_shading_input.V = ray.origin - P;
+                curr_shading_input.V = glm::normalize(ray.origin - P);
                 curr_shading_input.N = intersection.normal;
                 curr_actor = actor;
             }
         }
-        total += diffuse_absorption * material.albedo_color * diffuse +
-                 specular_absorption * material.specular_color * specular;
+
+        total += kD * diffuse_absorption * material.albedo_color * diffuse +
+                 (1.0f - kD) * specular_absorption * material.specular_color * specular;
 
         diffuse_absorption *= material.albedo_color;
         specular_absorption *= material.specular_color;

@@ -17,7 +17,7 @@ public:
         const float t = D / cos_angle;
 
         // 5. Check if the intersection is behind the camera
-        if (t < 0.0f) {
+        if (t < ray.t_min || t > ray.t_max) {
             return false;
         }
         if (out_intersection) {
