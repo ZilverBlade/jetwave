@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <condition_variable>
 #include <mutex>
+#include <functional>
 
 
 using Pixel = uint32_t;
@@ -106,17 +107,18 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 void SDL_AppQuit(void* appstate, SDL_AppResult result) {
     if (g_framebuffer) {
         delete[] g_framebuffer;
+        g_framebuffer = nullptr;
     }
 }
 
-void RenderRegion(int x_start, int y_start, int width, int height, int fb_width) {
+void RenderRegion(int dispatch_id, int x_start, int y_start, int width, int height, int fb_width) {
     int x_end = x_start + width;
     int y_end = y_start + height;
 
     for (int y = y_start; y < y_end; ++y) {
         Pixel* row_ptr = &g_framebuffer[y * fb_width];
         for (int x = x_start; x < x_end; ++x) {
-            row_ptr[x] = WRITE_PIXEL(x % 255, y % 255, 0, 255);
+            row_ptr[x] = WRITE_PIXEL(dispatch_id * 16, 0, 0, 255);
         }
     }
 }
@@ -132,11 +134,11 @@ void DrawFramebuffer(int width, int height) {
 
     // 2. The Shared Counter
     // This atomic integer represents the next tile "job" waiting to be done.
-    std::atomic<int> next_tile_index{ 0 };
+    std::atomic_int next_tile_index{ 0 };
 
     // 3. The Worker Function
     // This lambda will run on every thread. It keeps grabbing work until none is left.
-    auto worker = [&]() {
+    auto worker = [&](int dispatch_id) {
         while (true) {
             // "fetch_add" atomically grabs the current value and increments it.
             // This is thread-safe and lock-free.
@@ -160,7 +162,7 @@ void DrawFramebuffer(int width, int height) {
             int current_draw_h = std::min(tile_h, height - pixel_y);
 
             // Draw
-            RenderRegion(pixel_x, pixel_y, current_draw_w, current_draw_h, width);
+            RenderRegion(dispatch_id, pixel_x, pixel_y, current_draw_w, current_draw_h, width);
         }
     };
 
@@ -171,12 +173,12 @@ void DrawFramebuffer(int width, int height) {
 
     // We run (core_count - 1) threads, and let the main thread help too
     // to avoid context switching overhead.
-    for (unsigned int i = 0; i < core_count - 1; ++i) {
-        threads.emplace_back(worker);
+    for (unsigned int i = 1; i < core_count; ++i) {
+        threads.emplace_back(std::bind(worker, i));
     }
 
     // Main thread also does work!
-    worker();
+    worker(0);
 
     // 5. Cleanup
     // Wait for all helpers to finish.
