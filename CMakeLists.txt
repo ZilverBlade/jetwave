@@ -16,7 +16,7 @@ SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin)
 
 set(STB_IMAGE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/stbimage")
 
-# add_subdirectory(vendor)
+add_subdirectory(vendor)
 
 set(SRC_MAIN_CPP ${CMAKE_CURRENT_SOURCE_DIR}/src)
 file(GLOB_RECURSE SRC_MAIN_CPP_SOURCE
@@ -34,16 +34,16 @@ else()
     )
 endif()
 
-# target_link_libraries(xwave PRIVATE
-#     glm::glm-header-only
-#     fmt::fmt
-#     sdl
-# )
+target_link_libraries(xwave PRIVATE
+    glm::glm-header-only
+    fmt::fmt
+    SDL3::SDL3-shared
+)
 
 
-# target_include_directories(xwave PRIVATE
-#     ${STB_IMAGE_DIR}
-# )
+target_include_directories(xwave PRIVATE
+    ${STB_IMAGE_DIR}
+)
 target_include_directories(xwave
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
