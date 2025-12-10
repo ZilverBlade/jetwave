@@ -1,3 +1,4 @@
+#pragma once
 #include <src/Graphics/ILight.hpp>
 
 namespace devs_out_of_bounds {

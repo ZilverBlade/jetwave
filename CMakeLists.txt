@@ -22,7 +22,7 @@ set(SRC_MAIN_CPP ${CMAKE_CURRENT_SOURCE_DIR}/src)
 file(GLOB_RECURSE SRC_MAIN_CPP_SOURCE
       "${SRC_MAIN_CPP}/*.hpp"
       "${SRC_MAIN_CPP}/*.cpp")
-
+      
 
 if (WIN32)
     add_executable(xwave WIN32 
