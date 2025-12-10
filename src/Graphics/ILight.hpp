@@ -14,6 +14,8 @@ struct LightOutput {
     glm::vec3 specular = {};
 };
 struct ILight {
-    DOB_NODISCARD virtual LightOutput Evaluate(const LightInput& input) const = 0;
+    ILight() = default;
+    virtual ~ILight() = default;
+    DOOB_NODISCARD virtual LightOutput Evaluate(const LightInput& input) const = 0;
 };
 } // namespace devs_out_of_bounds

@@ -10,8 +10,8 @@ public:
     Scene() {}
     ~Scene() {}
 
-    DOB_NODISCARD ActorId NewDrawableActor(IShape* shape, IMaterial* material);
-    DOB_NODISCARD ActorId NewLightActor(ILight* light);
+    DOOB_NODISCARD ActorId NewDrawableActor(IShape* shape, IMaterial* material);
+    DOOB_NODISCARD ActorId NewLightActor(ILight* light);
 
     void DeleteActor(ActorId id);
 
@@ -25,10 +25,10 @@ public:
         }
     }
 
-    Actor& GetActorById(ActorId id);
+    DOOB_NODISCARD Actor& GetActorById(ActorId id);
 
 private:
-    ActorId AllocateActor(Actor** out_actor);
+    DOOB_NODISCARD ActorId AllocateActor(Actor** out_actor);
 
     std::vector<Actor> m_actors = {};
     std::vector<ActorId> m_alive = {};

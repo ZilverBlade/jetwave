@@ -1,12 +1,15 @@
 #include "PathTracer.hpp"
 #include <src/Graphics/Lights/PointLight.hpp>
 #include <src/Graphics/Materials/BasicMaterial.hpp>
+#include <src/Graphics/Materials/GridMaterial.hpp>
 #include <src/Graphics/Shapes/Sphere.hpp>
+#include <src/Graphics/Shapes/Plane.hpp>
 
 #include <random>
 
 namespace devs_out_of_bounds {
 static BasicMaterial g_default_mat = BasicMaterial({ 1.0f, 0.0f, 0.0f }, { 1, 1, 1 }, 64.0f);
+static GridMaterial g_grid_mat = GridMaterial();
 
 PathTracer::PathTracer() {
     m_scene = new Scene();
@@ -39,8 +42,7 @@ Pixel PathTracer::Evaluate(int x, int y) const {
     glm::vec2 ndc = glm::vec2(x, y) * m_inv_width_height * 2.0f - 1.0f;
     ndc.x *= m_ar;
 
-    const glm::vec3 o = m_camera.GetPosition();
-    const glm::vec3 r = m_camera.GetRay(ndc);
+    const Ray ray = m_camera.GetRay(ndc);
 
     Intersection intersection{ .t = INFINITY };
     IMaterial* current_material = nullptr;
@@ -49,7 +51,7 @@ Pixel PathTracer::Evaluate(int x, int y) const {
             return;
         }
         Intersection curr_intersection;
-        if (!actor.GetShape()->Intersect(o, r, &curr_intersection)) {
+        if (!actor.GetShape()->Intersect(ray, &curr_intersection)) {
             return;
         }
         if (curr_intersection.t < intersection.t) {
@@ -59,11 +61,11 @@ Pixel PathTracer::Evaluate(int x, int y) const {
     });
     if (!current_material) {
         // No intersection, background colour
-        return DOB_WRITE_PIXEL(205, 245, 255, 255);
+        return DOOB_WRITE_PIXEL(205, 245, 255, 255);
     }
-    const glm::vec3 P = intersection.t * r + o;
+    const glm::vec3 P = intersection.t * ray.direction + ray.origin;
     const glm::vec3 N = intersection.normal;
-    const glm::vec3 V = o - P;
+    const glm::vec3 V = ray.origin - P;
 
     MaterialOutput material;
     {
@@ -76,7 +78,7 @@ Pixel PathTracer::Evaluate(int x, int y) const {
     }
 
     const LightInput light_input{
-        .eye = o,
+        .eye = ray.origin,
         .P = P,
         .V = V,
         .N = N,
@@ -96,7 +98,10 @@ Pixel PathTracer::Evaluate(int x, int y) const {
     });
     const glm::vec3 color_accumulated = diffuse + specular;
     const glm::vec3 tone_mapped = 1.0f - glm::exp(-color_accumulated);
-    return DOB_WRITE_PIXEL_F32(tone_mapped.r, tone_mapped.g, tone_mapped.b, 1.0f);
+    return DOOB_WRITE_PIXEL_F32(tone_mapped.r, tone_mapped.g, tone_mapped.b, 1.0f);
+}
+void PathTracer::RebuildAccelerationStructures() {
+    
 }
 void PathTracer::LoadScene() {
     static std::vector<std::pair<Sphere, BasicMaterial>> objects;
@@ -119,15 +124,16 @@ void PathTracer::LoadScene() {
         float g = colDist(gen);
         float b = colDist(gen);
 
-
         objects.emplace_back(Sphere({ x, y, z }, radius), BasicMaterial({ r, g, b }, { 1, 1, 1 }, 64.f));
     }
 
     for (auto& [shape, material] : objects) {
-        m_scene->NewDrawableActor(&shape, &material);
+        ActorId id = m_scene->NewDrawableActor(&shape, &material);
     }
 
-    // --- Light Setup (Kept from your original code) ---
+    static Plane plane1 = Plane({ 0, 1, 0 }, { 0, -1, 0 });
+    m_plane_actor = m_scene->NewDrawableActor(&plane1, &g_grid_mat);
+
     static PointLight light1 = PointLight({ 0, 10, 0 }, { 4.f, 8.f, 8.f });
     m_light_actor = m_scene->NewLightActor(&light1);
 }

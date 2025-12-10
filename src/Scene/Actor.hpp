@@ -7,22 +7,22 @@ namespace devs_out_of_bounds {
 struct ActorId {
     friend auto operator<=>(const ActorId&, const ActorId&) = default;
     uint32_t id = 1;
-    DOB_NODISCARD DOB_FORCEINLINE bool Valid() const { return id > 0; }
+    DOOB_NODISCARD DOOB_FORCEINLINE bool Valid() const { return id > 0; }
 };
 class Actor {
 public:
     Actor() = default;
     Actor(ActorId id) : m_id(id) {}
 
-    DOB_NODISCARD DOB_FORCEINLINE bool Valid() const { return m_id.Valid(); }
-    DOB_NODISCARD DOB_FORCEINLINE ActorId GetId() const { return m_id; }
+    DOOB_NODISCARD DOOB_FORCEINLINE bool Valid() const { return m_id.Valid(); }
+    DOOB_NODISCARD DOOB_FORCEINLINE ActorId GetId() const { return m_id; }
 
-    DOB_NODISCARD DOB_FORCEINLINE IShape* GetShape() const { return m_shape; }
-    DOB_NODISCARD DOB_FORCEINLINE IMaterial* GetMaterial() const { return m_material; }
-    DOB_NODISCARD DOB_FORCEINLINE ILight* GetLight() const { return m_light; }
-    DOB_FORCEINLINE void SetShape(IShape* shape) { m_shape = shape; }
-    DOB_FORCEINLINE void SetMaterial(IMaterial* material) { m_material = material; }
-    DOB_FORCEINLINE void SetLight(ILight* light) { m_light = light; }
+    DOOB_NODISCARD DOOB_FORCEINLINE IShape* GetShape() const { return m_shape; }
+    DOOB_NODISCARD DOOB_FORCEINLINE IMaterial* GetMaterial() const { return m_material; }
+    DOOB_NODISCARD DOOB_FORCEINLINE ILight* GetLight() const { return m_light; }
+    DOOB_FORCEINLINE void SetShape(IShape* shape) { m_shape = shape; }
+    DOOB_FORCEINLINE void SetMaterial(IMaterial* material) { m_material = material; }
+    DOOB_FORCEINLINE void SetLight(ILight* light) { m_light = light; }
 
     friend auto operator<=>(const Actor& a, const Actor& b) { return a.m_id <=> b.m_id; }
 

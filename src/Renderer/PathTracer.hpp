@@ -11,15 +11,18 @@ public:
     void OnResize(int new_width, int new_height);
     void OnUpdate(float frame_time);
 
-    DOB_NODISCARD Pixel Evaluate(int x, int y) const;
+    DOOB_NODISCARD Pixel Evaluate(int x, int y) const;
 
 private:
+    void RebuildAccelerationStructures();
+
     void LoadScene();
     void Cleanup();
 
+
 private:
     ActorId m_light_actor;
-    ActorId m_sphere_actor;
+    ActorId m_plane_actor;
 
     Scene* m_scene = nullptr;
 

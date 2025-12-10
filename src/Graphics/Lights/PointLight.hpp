@@ -6,7 +6,7 @@ class PointLight : public ILight {
 public:
     PointLight(const glm::vec3& position, const glm::vec3& intensity) : m_position(position), m_intensity(intensity) {}
 
-    DOB_NODISCARD LightOutput Evaluate(const LightInput& input) const override {
+    DOOB_NODISCARD LightOutput Evaluate(const LightInput& input) const override {
         const glm::vec3 fragToLight = m_position - input.P;
         const float attenuation = 1.0f / glm::dot(fragToLight, fragToLight);
 
