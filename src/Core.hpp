@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 
@@ -125,6 +126,13 @@ struct Pointf {
     DOB_NODISCARD DOB_FORCEINLINE bool operator==(const Pointf&) const = default;
     DOB_NODISCARD DOB_FORCEINLINE bool operator!=(const Pointf&) const = default;
 };
+
+using Pixel = uint32_t;
+#define DOB_WRITE_PIXEL(r, g, b, a)                                                                                    \
+    Pixel(((static_cast<uint32_t>(r) & 0xFFU) << 24) | ((static_cast<uint32_t>(g) & 0xFFU) << 16) |                    \
+          ((static_cast<uint32_t>(b) & 0xFFU) << 8) | (static_cast<uint32_t>(a)) & 0xFFU)
+
+#define DOB_WRITE_PIXEL_F32(r, g, b, a) DOB_WRITE_PIXEL(r * 255.0f, g * 255.0f, b * 255.0f, a * 255.0f)
 
 #define DOB_MAKE_ENUM_FLAGS(Enum, Int)                                                                                 \
     static Enum operator|(Enum lhs, Enum rhs) {                                                                        \

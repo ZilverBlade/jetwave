@@ -9,19 +9,18 @@
 #include <thread>
 #include <vector>
 
+#include <src/Renderer/PathTracer.hpp>
+
 #define SDL_MAIN_USE_CALLBACKS 1 /* use the callbacks instead of main() */
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <algorithm>
+#include <chrono>
 #include <condition_variable>
-#include <mutex>
+#include <format>
 #include <functional>
+#include <mutex>
 
-
-using Pixel = uint32_t;
-#define WRITE_PIXEL(r, g, b, a)                                                                                        \
-    Pixel(((static_cast<uint32_t>(r) & 0xFFU) << 24) | ((static_cast<uint32_t>(g) & 0xFFU) << 16) |                    \
-          ((static_cast<uint32_t>(b) & 0xFFU) << 8) | (static_cast<uint32_t>(a)) & 0xFFU)
 
 /* We will use this renderer to draw into this window every frame. */
 static SDL_Window* g_window = nullptr;
@@ -29,9 +28,10 @@ static SDL_Renderer* g_renderer = nullptr;
 static SDL_Texture* g_screen_texture = nullptr;
 static SDL_FRect g_dest_rect = {};
 static Pixel* g_framebuffer = nullptr;
+static devs_out_of_bounds::PathTracer* g_path_tracer = nullptr;
 
-static constexpr int THREAD_DISPATCH_X = 8;
-static constexpr int THREAD_DISPATCH_Y = 8;
+static constexpr int THREAD_DISPATCH_X = 32;
+static constexpr int THREAD_DISPATCH_Y = 32;
 
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
@@ -45,10 +45,15 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
     static int initial_w = 640;
     static int initial_h = 480;
 
-    if (!SDL_CreateWindowAndRenderer("X-Wave", initial_w, initial_h, SDL_WINDOW_RESIZABLE, &g_window, &g_renderer)) {
-        SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
+    if (g_window = SDL_CreateWindow("X-Wave", initial_w, initial_h, SDL_WINDOW_RESIZABLE); !g_window) {
+        SDL_Log("Couldn't create window: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+    if (g_renderer = SDL_CreateRenderer(g_window, nullptr); !g_renderer) {
+        SDL_Log("Couldn't create renderer: %s", SDL_GetError());
+        return SDL_APP_FAILURE;
+    }
+    SDL_SetRenderVSync(g_renderer, SDL_RENDERER_VSYNC_ADAPTIVE);
     SDL_SetRenderLogicalPresentation(g_renderer, initial_w, initial_h, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
     g_screen_texture =
@@ -56,6 +61,10 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
     g_dest_rect = { 0, 0, static_cast<float>(initial_w), static_cast<float>(initial_h) };
     g_framebuffer = new Pixel[initial_w * initial_h];
     SDL_Log("Succesfully initialised SDL");
+
+    g_path_tracer = new devs_out_of_bounds::PathTracer();
+    g_path_tracer->OnResize(initial_w, initial_h);
+
     return SDL_APP_CONTINUE; /* carry on with the program! */
 }
 
@@ -81,6 +90,8 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
         }
         g_framebuffer = new Pixel[w * h];
         SDL_SetRenderLogicalPresentation(g_renderer, w, h, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+        g_path_tracer->OnResize(w, h);
+
         return SDL_APP_CONTINUE;
     }
     default:
@@ -92,33 +103,46 @@ static void DrawFramebuffer(int width, int height);
 
 /* This function runs once per frame, and is the heart of the program. */
 SDL_AppResult SDL_AppIterate(void* appstate) {
+    static auto last_frame = std::chrono::high_resolution_clock::now();
+    auto current_frame = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<float> duration = current_frame - last_frame;
+    float frame_time = duration.count();
+
+    last_frame = current_frame;
+
     SDL_RenderClear(g_renderer);
 
     DrawFramebuffer(g_dest_rect.w, g_dest_rect.h);
 
     SDL_UpdateTexture(g_screen_texture, NULL, g_framebuffer, g_dest_rect.w * sizeof(Pixel));
     SDL_RenderTexture(g_renderer, g_screen_texture, nullptr, &g_dest_rect);
-    SDL_RenderPresent(g_renderer);
 
+    SDL_SetRenderDrawColor(g_renderer, 255, 255, 255, 255);
+    SDL_RenderDebugTextFormat(g_renderer, 16.f, 16.f, "X-Wave | FPS: %i, Frame Time: %.2f ms",
+        static_cast<int>(1.0 / frame_time), 1000.0f * frame_time);
+
+    SDL_RenderPresent(g_renderer);
     return SDL_APP_CONTINUE; /* carry on with the program! */
 }
 
 /* This function runs once at shutdown. */
 void SDL_AppQuit(void* appstate, SDL_AppResult result) {
+    delete g_path_tracer;
+    g_path_tracer = nullptr;
     if (g_framebuffer) {
         delete[] g_framebuffer;
         g_framebuffer = nullptr;
     }
 }
 
-void RenderRegion(int dispatch_id, int x_start, int y_start, int width, int height, int fb_width) {
+static void RenderRegion(int dispatch_id, int x_start, int y_start, int width, int height, int fb_width) {
     int x_end = x_start + width;
     int y_end = y_start + height;
 
     for (int y = y_start; y < y_end; ++y) {
         Pixel* row_ptr = &g_framebuffer[y * fb_width];
         for (int x = x_start; x < x_end; ++x) {
-            row_ptr[x] = WRITE_PIXEL(dispatch_id * 16, 0, 0, 255);
+            row_ptr[x] = g_path_tracer->Evaluate(x, y);
         }
     }
 }

@@ -36,7 +36,6 @@ endif()
 
 target_link_libraries(xwave PRIVATE
     glm::glm-header-only
-    fmt::fmt
     SDL3::SDL3-shared
 )
 
