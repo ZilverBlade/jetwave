@@ -115,7 +115,7 @@ void PathTracer::LoadScene() {
     point_lights.clear();
     point_lights.reserve(light_colors.size());
     for (int i = 0; i < light_colors.size(); ++i) {
-        point_lights.push_back(PointLight({ 0, 10, 0 }, light_colors[i] * 10.0f));
+        point_lights.push_back(PointLight({ 0, 10, 0 }, light_colors[i] * 5.0f));
         m_light_actor = m_scene->NewLightActor(&point_lights.back());
     }
 
@@ -244,7 +244,7 @@ glm::vec3 PathTracer::ShadeActor(const DrawableActor& actor, const LightInput& s
 }
 DOOB_NODISCARD glm::vec3 PathTracer::SampleSky(const glm::vec3& R) const {
     // TODO skybox
-    static glm::vec3 ambient_color = { 0.21f, 0.23f, 0.24f };
+    static glm::vec3 ambient_color = { 0.51f, 0.53f, 0.54f };
     return ambient_color;
 }
 } // namespace devs_out_of_bounds
