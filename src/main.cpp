@@ -6,9 +6,15 @@
  * This code is public domain. Feel free to use it for any purpose!
  */
 
+#include <thread>
+#include <vector>
+
 #define SDL_MAIN_USE_CALLBACKS 1 /* use the callbacks instead of main() */
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <algorithm>
+#include <condition_variable>
+#include <mutex>
 
 
 using Pixel = uint32_t;
@@ -23,6 +29,8 @@ static SDL_Texture* g_screen_texture = nullptr;
 static SDL_FRect g_dest_rect = {};
 static Pixel* g_framebuffer = nullptr;
 
+static constexpr int THREAD_DISPATCH_X = 8;
+static constexpr int THREAD_DISPATCH_Y = 8;
 
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
@@ -101,12 +109,79 @@ void SDL_AppQuit(void* appstate, SDL_AppResult result) {
     }
 }
 
-void DrawFramebuffer(int width, int height) {
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            Pixel* pixel = &g_framebuffer[y * width + x];
+void RenderRegion(int x_start, int y_start, int width, int height, int fb_width) {
+    int x_end = x_start + width;
+    int y_end = y_start + height;
 
-            *pixel = WRITE_PIXEL(255, 128, 128, 255);
+    for (int y = y_start; y < y_end; ++y) {
+        Pixel* row_ptr = &g_framebuffer[y * fb_width];
+        for (int x = x_start; x < x_end; ++x) {
+            row_ptr[x] = WRITE_PIXEL(x % 255, y % 255, 0, 255);
         }
+    }
+}
+void DrawFramebuffer(int width, int height) {
+    // 1. Calculate grid dimensions
+    const int tile_w = THREAD_DISPATCH_X;
+    const int tile_h = THREAD_DISPATCH_Y;
+
+    // Integer division that rounds up to ensure we cover edges
+    const int num_tiles_x = (width + tile_w - 1) / tile_w;
+    const int num_tiles_y = (height + tile_h - 1) / tile_h;
+    const int total_tiles = num_tiles_x * num_tiles_y;
+
+    // 2. The Shared Counter
+    // This atomic integer represents the next tile "job" waiting to be done.
+    std::atomic<int> next_tile_index{ 0 };
+
+    // 3. The Worker Function
+    // This lambda will run on every thread. It keeps grabbing work until none is left.
+    auto worker = [&]() {
+        while (true) {
+            // "fetch_add" atomically grabs the current value and increments it.
+            // This is thread-safe and lock-free.
+            int my_job_index = next_tile_index.fetch_add(1);
+
+            // If the index is out of bounds, we are done.
+            if (my_job_index >= total_tiles) {
+                return;
+            }
+
+            // Convert linear index (0, 1, 2...) back to 2D Grid Coordinates
+            int tile_x_index = my_job_index % num_tiles_x;
+            int tile_y_index = my_job_index / num_tiles_x;
+
+            // Convert Grid Coordinates to Pixel Coordinates
+            int pixel_x = tile_x_index * tile_w;
+            int pixel_y = tile_y_index * tile_h;
+
+            // Handle edge cases (don't draw off the screen)
+            int current_draw_w = std::min(tile_w, width - pixel_x);
+            int current_draw_h = std::min(tile_h, height - pixel_y);
+
+            // Draw
+            RenderRegion(pixel_x, pixel_y, current_draw_w, current_draw_h, width);
+        }
+    };
+
+    // 4. Launch Threads
+    // Only launch as many threads as you have cores.
+    unsigned int core_count = std::thread::hardware_concurrency();
+    std::vector<std::thread> threads;
+
+    // We run (core_count - 1) threads, and let the main thread help too
+    // to avoid context switching overhead.
+    for (unsigned int i = 0; i < core_count - 1; ++i) {
+        threads.emplace_back(worker);
+    }
+
+    // Main thread also does work!
+    worker();
+
+    // 5. Cleanup
+    // Wait for all helpers to finish.
+    for (auto& t : threads) {
+        if (t.joinable())
+            t.join();
     }
 }
