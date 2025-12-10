@@ -2,8 +2,8 @@
 #include <src/Graphics/Lights/PointLight.hpp>
 #include <src/Graphics/Materials/BasicMaterial.hpp>
 #include <src/Graphics/Materials/GridMaterial.hpp>
-#include <src/Graphics/Shapes/Sphere.hpp>
 #include <src/Graphics/Shapes/Plane.hpp>
+#include <src/Graphics/Shapes/Sphere.hpp>
 
 #include <random>
 
@@ -40,7 +40,11 @@ void PathTracer::OnUpdate(float frame_time) {
 
 Pixel PathTracer::Evaluate(int x, int y) const {
     glm::vec2 ndc = glm::vec2(x, y) * m_inv_width_height * 2.0f - 1.0f;
-    ndc.x *= m_ar;
+    ndc.y /= m_ar;
+    ndc.y = -ndc.y; // flip Y
+
+    // debug NDC
+    // return DOOB_WRITE_PIXEL_F32(ndc.x * 0.5f + 0.5f, ndc.y * 0.5f + 0.5f, 0.0f, 1.0f);
 
     const Ray ray = m_camera.GetRay(ndc);
 
@@ -85,7 +89,9 @@ Pixel PathTracer::Evaluate(int x, int y) const {
         .specular_power = material.specular_power,
     };
 
-    glm::vec3 diffuse = {};
+    static const glm::vec3 AMBIENT = { 0.18f, 0.22f, 0.25f };
+
+    glm::vec3 diffuse = AMBIENT;
     glm::vec3 specular = {};
 
     m_scene->QueryScene([&](const Actor& actor) {
@@ -93,16 +99,14 @@ Pixel PathTracer::Evaluate(int x, int y) const {
             return;
         }
         LightOutput light = actor.GetLight()->Evaluate(light_input);
-        diffuse += material.albedo_color * light.diffuse;
-        specular += material.specular_color * light.specular;
+        diffuse += light.diffuse;
+        specular += light.specular;
     });
-    const glm::vec3 color_accumulated = diffuse + specular;
+    const glm::vec3 color_accumulated = material.albedo_color * diffuse + material.specular_color * specular;
     const glm::vec3 tone_mapped = 1.0f - glm::exp(-color_accumulated);
     return DOOB_WRITE_PIXEL_F32(tone_mapped.r, tone_mapped.g, tone_mapped.b, 1.0f);
 }
-void PathTracer::RebuildAccelerationStructures() {
-    
-}
+void PathTracer::RebuildAccelerationStructures() {}
 void PathTracer::LoadScene() {
     static std::vector<std::pair<Sphere, BasicMaterial>> objects;
     objects.clear();
