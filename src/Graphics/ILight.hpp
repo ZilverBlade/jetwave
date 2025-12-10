@@ -7,6 +7,8 @@ struct LightInput {
     glm::vec3 P = {};
     glm::vec3 V = {};
     glm::vec3 N = {};
+};
+struct ShadingInput {
     float specular_power = {};
 };
 struct LightOutput {
@@ -16,6 +18,6 @@ struct LightOutput {
 struct ILight {
     ILight() = default;
     virtual ~ILight() = default;
-    DOOB_NODISCARD virtual LightOutput Evaluate(const LightInput& input) const = 0;
+    DOOB_NODISCARD virtual LightOutput Evaluate(const LightInput& input, const ShadingInput& shading) const = 0;
 };
 } // namespace devs_out_of_bounds

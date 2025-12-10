@@ -9,6 +9,13 @@ struct ActorId {
     uint32_t id = 1;
     DOOB_NODISCARD DOOB_FORCEINLINE bool Valid() const { return id > 0; }
 };
+struct DrawableActor {
+    IShape* shape = nullptr;
+    IMaterial* material = nullptr;
+};
+struct LightActor {
+    ILight* light = nullptr;
+};
 class Actor {
 public:
     Actor() = default;
@@ -32,4 +39,5 @@ private:
     ILight* m_light = nullptr;
     ActorId m_id = {};
 };
+
 } // namespace devs_out_of_bounds

@@ -94,6 +94,12 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
 
         return SDL_APP_CONTINUE;
     }
+    case SDL_EVENT_KEY_DOWN: {
+        if (event->key.key == SDLK_B && !event->key.repeat) {
+            g_path_tracer->m_parameters.max_light_bounces = (g_path_tracer->m_parameters.max_light_bounces + 1) % 4;
+        }
+        return SDL_APP_CONTINUE; 
+    }
     default:
         return SDL_APP_CONTINUE; /* carry on with the program! */
     }
@@ -121,6 +127,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     SDL_SetRenderDrawColor(g_renderer, 255, 255, 255, 255);
     SDL_RenderDebugTextFormat(g_renderer, 16.f, 16.f, "X-Wave | FPS: %i, Frame Time: %.2f ms",
         static_cast<int>(1.0 / frame_time), 1000.0f * frame_time);
+    SDL_RenderDebugTextFormat(g_renderer, 16.f, 26.f, "Max Light Bounces: %i", g_path_tracer->m_parameters.max_light_bounces);
 
     SDL_RenderPresent(g_renderer);
     return SDL_APP_CONTINUE; /* carry on with the program! */

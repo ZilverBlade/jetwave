@@ -11,6 +11,7 @@ namespace devs_out_of_bounds {
 static BasicMaterial g_default_mat = BasicMaterial({ 1.0f, 0.0f, 0.0f }, { 1, 1, 1 }, 64.0f);
 static GridMaterial g_grid_mat = GridMaterial();
 
+
 PathTracer::PathTracer() {
     m_scene = new Scene();
     LoadScene();
@@ -48,61 +49,24 @@ Pixel PathTracer::Evaluate(int x, int y) const {
 
     const Ray ray = m_camera.GetRay(ndc);
 
-    Intersection intersection{ .t = INFINITY };
-    IMaterial* current_material = nullptr;
-    m_scene->QueryScene([&](const Actor& actor) {
-        if (!actor.GetShape() || !actor.GetMaterial()) {
-            return;
-        }
-        Intersection curr_intersection;
-        if (!actor.GetShape()->Intersect(ray, &curr_intersection)) {
-            return;
-        }
-        if (curr_intersection.t < intersection.t) {
-            intersection = curr_intersection;
-            current_material = actor.GetMaterial();
-        }
-    });
-    if (!current_material) {
-        // No intersection, background colour
-        return DOOB_WRITE_PIXEL(205, 245, 255, 255);
-    }
-    const glm::vec3 P = intersection.t * ray.direction + ray.origin;
-    const glm::vec3 N = intersection.normal;
-    const glm::vec3 V = ray.origin - P;
+    Intersection intersection;
+    DrawableActor actor;
 
-    MaterialOutput material;
-    {
-        const MaterialInput input{
-            .position = P,
-            .normal = N,
-            .uv = { 0, 0 },
+    glm::vec3 color_accumulated = {};
+    if (!this->IntersectFirstActor(ray, &intersection, &actor)) {
+        // No intersection, sky colour
+        color_accumulated = this->SampleSky(ray.direction);
+    } else {
+        const glm::vec3 P = intersection.t * ray.direction + ray.origin;
+
+        const LightInput light_input{
+            .eye = ray.origin,
+            .P = P,
+            .V = ray.origin - P,
+            .N = intersection.normal,
         };
-        material = current_material->Evaluate(input);
+        color_accumulated = this->ShadeActor(actor, light_input);
     }
-
-    const LightInput light_input{
-        .eye = ray.origin,
-        .P = P,
-        .V = V,
-        .N = N,
-        .specular_power = material.specular_power,
-    };
-
-    static const glm::vec3 AMBIENT = { 0.18f, 0.22f, 0.25f };
-
-    glm::vec3 diffuse = AMBIENT;
-    glm::vec3 specular = {};
-
-    m_scene->QueryScene([&](const Actor& actor) {
-        if (!actor.GetLight()) {
-            return;
-        }
-        LightOutput light = actor.GetLight()->Evaluate(light_input);
-        diffuse += light.diffuse;
-        specular += light.specular;
-    });
-    const glm::vec3 color_accumulated = material.albedo_color * diffuse + material.specular_color * specular;
     const glm::vec3 tone_mapped = 1.0f - glm::exp(-color_accumulated);
     return DOOB_WRITE_PIXEL_F32(tone_mapped.r, tone_mapped.g, tone_mapped.b, 1.0f);
 }
@@ -140,6 +104,109 @@ void PathTracer::LoadScene() {
 
     static PointLight light1 = PointLight({ 0, 10, 0 }, { 4.f, 8.f, 8.f });
     m_light_actor = m_scene->NewLightActor(&light1);
+
+    m_drawable_actors.clear();
+    m_light_actors.clear();
+    m_scene->QueryScene([this](const Actor& actor) {
+        if (actor.GetShape() && actor.GetMaterial()) {
+            m_drawable_actors.push_back(DrawableActor{ .shape = actor.GetShape(), .material = actor.GetMaterial() });
+        }
+        if (actor.GetLight()) {
+            m_light_actors.push_back(LightActor{ .light = actor.GetLight() });
+        }
+    });
 }
 void PathTracer::Cleanup() {}
+bool PathTracer::IntersectFirstActor(const Ray& ray, Intersection* out_intersection, DrawableActor* out_actor) const {
+    Intersection intersection{ .t = INFINITY };
+    DrawableActor current_actor;
+
+    for (const auto& actor : m_drawable_actors) {
+        Intersection curr_intersection;
+        if (!actor.shape->Intersect(ray, &curr_intersection)) {
+            continue;
+        }
+        if (curr_intersection.t < intersection.t) {
+            intersection = curr_intersection;
+            current_actor = actor;
+        }
+    }
+    if (glm::isinf(intersection.t)) {
+        return false;
+    }
+    if (out_actor) {
+        *out_actor = current_actor;
+    }
+    if (out_intersection) {
+        *out_intersection = intersection;
+    }
+    return true;
+}
+
+glm::vec3 PathTracer::ShadeActor(const DrawableActor& actor, const LightInput& shading_input) const {
+    DrawableActor curr_actor = actor;
+    LightInput curr_shading_input = shading_input;
+    glm::vec3 total = {};
+    glm::vec3 diffuse_absorption = { 1, 1, 1 };
+    glm::vec3 specular_absorption = { 1, 1, 1 };
+    for (int b = 0; b <= m_parameters.max_light_bounces; ++b) {
+        bool b_stop = false;
+
+        glm::vec3 diffuse = {};
+        glm::vec3 specular = {};
+        MaterialOutput material = curr_actor.material->Evaluate({
+            .position = curr_shading_input.P,
+            .normal = curr_shading_input.N,
+            .uv = { 0, 0 },
+        });
+
+        // DIRECT LIGHTING
+        {
+
+            for (const auto& [light_obj] : m_light_actors) {
+                LightOutput result =
+                    light_obj->Evaluate(curr_shading_input, { .specular_power = material.specular_power });
+                diffuse += result.diffuse;
+                specular += result.specular;
+            }
+        }
+        // SPECULAR LIGHTING (Reflections)
+        if (b < m_parameters.max_light_bounces) {
+            glm::vec3 R = glm::reflect(-curr_shading_input.V, curr_shading_input.N);
+            curr_shading_input.eye = curr_shading_input.P;
+
+            Ray ray{ .origin = curr_shading_input.P, .direction = R };
+            // offset ray to avoid bias
+            ray.origin += glm::sign(curr_shading_input.N) * glm::abs(ray.origin * 0.0000002f);
+            Intersection intersection;
+            DrawableActor actor;
+            if (!this->IntersectFirstActor(ray, &intersection, &actor)) {
+                // reached sky
+                specular += this->SampleSky(R);
+                b_stop = true;
+            } else {
+                const glm::vec3 P = intersection.t * ray.direction + ray.origin;
+                curr_shading_input.P = P;
+                curr_shading_input.V = ray.origin - P;
+                curr_shading_input.N = intersection.normal;
+                curr_actor = actor;
+            }
+        }
+        total += diffuse_absorption * material.albedo_color * diffuse +
+                 specular_absorption * material.specular_color * specular;
+
+        diffuse_absorption *= material.albedo_color;
+        specular_absorption *= material.specular_color;
+
+        if (b_stop) {
+            break;
+        }
+    }
+    return total;
+}
+DOOB_NODISCARD glm::vec3 PathTracer::SampleSky(const glm::vec3& R) const {
+    // TODO skybox
+    static glm::vec3 ambient_color = { 0.21f, 0.23f, 0.24f };
+    return ambient_color;
+}
 } // namespace devs_out_of_bounds
