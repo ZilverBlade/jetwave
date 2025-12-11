@@ -21,6 +21,7 @@ public:
             return false;
         }
         if (out_intersection) {
+            out_intersection->position = ray.origin + ray.direction * t;
             out_intersection->t = t;
             out_intersection->normal = m_normal;
             out_intersection->barycentric = { 0.0f, 0.0f };

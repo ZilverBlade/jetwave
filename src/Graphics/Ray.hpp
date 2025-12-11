@@ -2,11 +2,11 @@
 #include <src/Core.hpp>
 namespace devs_out_of_bounds {
 struct Intersection {
-    glm::vec2 barycentric = {};
+    glm::vec3 position = {};
     float t = {};
+    glm::vec2 barycentric = {};
     uint32_t primitive = 0;
     glm::vec3 normal = {};
-    uint32_t _padding;
 };
 struct Ray {
     glm::vec3 origin = {};

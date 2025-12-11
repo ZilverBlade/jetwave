@@ -9,12 +9,11 @@ struct MaterialInput {
     glm::vec2 uv = {};
 };
 struct MaterialOutput {
+    glm::vec3 world_normal = {};
     glm::vec3 albedo_color = {};
-    uint32_t _padding0;
     glm::vec3 specular_color = {};
     float specular_power = {};
     glm::vec3 emission_color = {};
-    uint32_t _padding1;
 };
 struct IMaterial {
     IMaterial() = default;

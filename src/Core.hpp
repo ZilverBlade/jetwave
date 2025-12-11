@@ -1,6 +1,8 @@
 #pragma once
 #define GLM_ENABLE_EXPERIMENTAL 1
-
+//#define GLM_FORCE_AVX2 1
+//#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES 1
+//#define GLM_FORCE_INTRINSICS 1
 #include <cassert>
 #include <cstddef>
 #include <cstdint>

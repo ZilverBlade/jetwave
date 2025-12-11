@@ -6,9 +6,11 @@
 #include <src/Graphics/Shapes/Sphere.hpp>
 
 #include <random>
+#include <src/Graphics/Shapes/Triangle.hpp>
 
 namespace devs_out_of_bounds {
 static BasicMaterial g_default_mat = BasicMaterial({ 1.0f, 1.0f, 1.0f }, { 1, 1, 1 }, 64.0f);
+static BasicMaterial g_default_mat2 = BasicMaterial({ 1.0f, 0.0f, 0.0f }, { 1, 1, 1 }, 64.0f);
 static GridMaterial g_grid_mat = GridMaterial();
 
 
@@ -105,8 +107,12 @@ void PathTracer::LoadScene() {
     static Plane plane1 = Plane({ 0, 1, 0 }, { 0, -1, 0 });
     m_plane_actor = m_scene->NewDrawableActor(&plane1, &g_grid_mat);
 
-    static Sphere sphere1 = Sphere({ 0, 0.0f, 5.0f }, 1.0f);
+    static Sphere sphere1 = Sphere({ 0.0f, 0.0f, 5.0f }, 1.0f);
     ActorId sphere_actor = m_scene->NewDrawableActor(&sphere1, &g_default_mat);
+
+    
+    static Triangle triangle1 = Triangle({ 0, 0, 3 }, { 1, 1, 4 }, { 0, 3, 3 });
+    ActorId triangle_actor = m_scene->NewDrawableActor(&triangle1, &g_default_mat2);
 
     std::vector<glm::vec3> light_colors{
         { 1.f, .1f, .1f }, { .1f, .1f, 1.f }, { .1f, 1.f, .1f }, { 1.f, 1.f, .1f }, { .1f, 1.f, 1.f }, { 1.f, 1.f, 1.f }
@@ -222,9 +228,8 @@ glm::vec3 PathTracer::ShadeActor(const DrawableActor& actor, const LightInput& s
                 specular += this->SampleSky(R);
                 b_stop = true;
             } else {
-                const glm::vec3 P = intersection.t * ray.direction + ray.origin;
-                curr_shading_input.P = P;
-                curr_shading_input.V = glm::normalize(ray.origin - P);
+                curr_shading_input.P = intersection.position;
+                curr_shading_input.V = glm::normalize(ray.origin - intersection.position);
                 curr_shading_input.N = intersection.normal;
                 curr_actor = actor;
             }

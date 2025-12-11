@@ -9,7 +9,7 @@ public:
     DOOB_NODISCARD bool Intersect(const Ray& ray, Intersection* out_intersection) const override {
         const glm::vec3 oc = ray.origin - m_center;
 
-        //const float a = glm::dot(ray.direction, ray.direction);
+        // const float a = glm::dot(ray.direction, ray.direction);
         const float b = 2.0f * glm::dot(ray.direction, oc);
         const float c = glm::dot(oc, oc) - m_radius2;
 
@@ -24,7 +24,7 @@ public:
         // If t0 is invalid (behind us or too far), try t1 (the exit point)
         if (t < ray.t_min || t > ray.t_max) {
             t = (-b + glm::sqrt(discriminant)) * 0.5f;
-            
+
             // If t1 is ALSO invalid, then we truly missed (or are entirely behind/past it)
             if (t < ray.t_min || t > ray.t_max) {
                 return false;
@@ -33,10 +33,12 @@ public:
         }
 
         if (out_intersection) {
+            glm::vec3 target = ray.direction * t;
+            out_intersection->position = ray.origin + target;
             out_intersection->t = t;
-            out_intersection->normal = glm::normalize(oc + ray.direction * t);
             out_intersection->barycentric = { 0.0f, 0.0f }; // Spheres don't use barycentrics
             out_intersection->primitive = 0;
+            out_intersection->normal = glm::normalize(oc + target);
         }
 
         return true;
