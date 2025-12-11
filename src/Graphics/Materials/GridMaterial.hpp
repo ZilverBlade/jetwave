@@ -12,8 +12,8 @@ public:
         return {
             .world_normal = input.normal,
             .albedo_color = b_foreground ? m_grid_foreground : m_grid_background,
-            .specular_color = { 1.f, 1.f, 1.f },
-            .specular_power = 256.0f,
+            .specular_color = { .5f, .5f, .5f },
+            .specular_power = 16.0f,
         };
     }
 

@@ -307,6 +307,7 @@ void applyToneMapping(vec3& rgb, GT7ToneMapping TM) {
 static BasicMaterial g_default_mat = BasicMaterial({ 1.0f, 1.0f, 1.0f }, { 1, 1, 1 }, 64.0f);
 static TriangleDebugMaterial g_debug_mat = TriangleDebugMaterial();
 static GridMaterial g_grid_mat = GridMaterial();
+static std::vector<PointLight> g_point_lights;
 
 PathTracer::PathTracer() {
     m_scene = new Scene();
@@ -335,12 +336,11 @@ void PathTracer::OnUpdate(float frame_time) {
     if (!m_parameters.b_accumulate) {
         m_accumulation_count = 1;
         int index = 0;
-        /*for (auto& [light_obj] : m_light_actors) {
+        for (auto& light : g_point_lights) {
             float phase = index / static_cast<float>(m_light_actors.size()) * glm::two_pi<float>();
-            PointLight* light = static_cast<PointLight*>(light_obj);
-            light->m_position = glm::vec3(4.0f * glm::cos(accum + phase), 2.0f, 4.0f * glm::sin(accum + phase) + 4.0f);
+            light.m_position = glm::vec3(4.0f * glm::cos(accum + phase), 2.0f, 4.0f * glm::sin(accum + phase) + 4.0f);
             ++index;
-        }*/
+        }
         accum += frame_time;
     } else {
         ++m_accumulation_count;
@@ -449,17 +449,16 @@ void PathTracer::LoadScene() {
     static Triangle triangle1 = Triangle({ 0, 0, 3 }, { 0, 3, 3 }, { 1, 1, 4 });
     // ActorId triangle_actor = m_scene->NewDrawableActor(&triangle1, &g_debug_mat);
 
-    // std::vector<glm::vec3> light_colors{ { 1.f, 1.f, 1.f }, { 1.f, .1f, .1f }, { .1f, .1f, 1.f }, { .1f, 1.f, .1f },
-    //     { 1.f, 1.f, .1f }, { .1f, 1.f, 1.f } };
-    // static std::vector<PointLight> point_lights;
-    // point_lights.clear();
-    // point_lights.reserve(light_colors.size());
-    // for (int i = 0; i < light_colors.size(); ++i) {
-    //     point_lights.push_back(PointLight({ 0, 10, 0 }, light_colors[i] * 15.0f));
-    //     m_light_actor = m_scene->NewLightActor(&point_lights.back());
-    // }
+    std::vector<glm::vec3> light_colors{ { 1.f, 1.f, 1.f }, { 1.f, .1f, .1f }, { .1f, .1f, 1.f }, { .1f, 1.f, .1f },
+        { 1.f, 1.f, .1f }, { .1f, 1.f, 1.f } };
+    g_point_lights.clear();
+    g_point_lights.reserve(light_colors.size());
+    for (int i = 0; i < light_colors.size(); ++i) {
+        g_point_lights.push_back(PointLight({ 0, 10, 0 }, light_colors[i] * 10.0f));
+        m_light_actor = m_scene->NewLightActor(&g_point_lights.back());
+    }
 
-    static AreaLight area_light1 = AreaLight({ 0, 1, 8 }, { 1, 2 }, { 80,80, 80 });
+    static AreaLight area_light1 = AreaLight({ 0, 4.0f, 8 }, { 1, 2 }, { 60, 60, 60 });
     ActorId light_actor1 = m_scene->NewLightActor(&area_light1);
 
     m_drawable_actors.clear();
@@ -530,7 +529,7 @@ glm::vec3 PathTracer::ShadeActor(const DrawableActor& actor, const LightInput& s
         {
             for (const auto& [light_obj] : m_light_actors) {
                 LightOutput result =
-                    light_obj->Evaluate(curr_shading_input, { .specular_power = material.specular_power}, seed,
+                    light_obj->Evaluate(curr_shading_input, { .specular_power = material.specular_power }, seed,
                         {
                             .userdata = reinterpret_cast<const void*>(this),
                             .fn_shadow_check =
