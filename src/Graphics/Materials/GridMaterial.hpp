@@ -6,13 +6,14 @@ class GridMaterial : public IMaterial {
 public:
     GridMaterial() {}
 
-    DOOB_NODISCARD MaterialOutput Evaluate(const MaterialInput& input) const override {
+    DOOB_NODISCARD MaterialOutput Evaluate(const Fragment& input) const override {
         glm::vec3 cell = glm::floor(input.position / m_grid_size);
         bool b_foreground = (int(cell.x + cell.y + cell.z) % 2) != 0;
         return {
+            .world_normal = input.normal,
             .albedo_color = b_foreground ? m_grid_foreground : m_grid_background,
-            .specular_color = { .5f, .5f, .5f },
-            .specular_power = 16.0f,
+            .specular_color = { 1.f, 1.f, 1.f },
+            .specular_power = 256.0f,
         };
     }
 

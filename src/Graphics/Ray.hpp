@@ -6,7 +6,7 @@ struct Intersection {
     float t = {};
     glm::vec2 barycentric = {};
     uint32_t primitive = 0;
-    glm::vec3 normal = {};
+    glm::vec3 flat_normal = {};
 };
 struct Ray {
     glm::vec3 origin = {};

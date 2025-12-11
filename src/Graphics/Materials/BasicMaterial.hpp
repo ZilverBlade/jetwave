@@ -7,8 +7,9 @@ public:
     BasicMaterial(const glm::vec3& albedo_color, const glm::vec3& specular_color, float specular_power)
         : m_albedo_color(albedo_color), m_specular_color(specular_color), m_specular_power(specular_power) {}
 
-    DOOB_NODISCARD MaterialOutput Evaluate(const MaterialInput& input) const override {
+    DOOB_NODISCARD MaterialOutput Evaluate(const Fragment& input) const override {
         return {
+            .world_normal = input.normal,
             .albedo_color = m_albedo_color,
             .specular_color = m_specular_color,
             .specular_power = m_specular_power,

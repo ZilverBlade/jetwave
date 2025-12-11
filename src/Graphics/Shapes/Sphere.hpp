@@ -38,7 +38,7 @@ public:
             out_intersection->t = t;
             out_intersection->barycentric = { 0.0f, 0.0f }; // Spheres don't use barycentrics
             out_intersection->primitive = 0;
-            out_intersection->normal = glm::normalize(oc + target);
+            out_intersection->flat_normal = glm::normalize(oc + target);
         }
 
         return true;
@@ -50,6 +50,15 @@ public:
             .max = m_center + r,
         };
     }
+    DOOB_NODISCARD Fragment SampleFragment(const Intersection& intersection) const override {
+        return {
+            .position = intersection.position,
+            .normal = intersection.flat_normal,
+            .tangent = {},
+            .uv = {},
+        };
+    }
+
 
     glm::vec3 m_center;
     float m_radius2;

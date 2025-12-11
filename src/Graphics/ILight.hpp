@@ -16,7 +16,6 @@ struct ShadowingInput {
     const void* userdata = nullptr;
     // return true if visible
     FunctionPtr<bool(const Ray&, const void*)> fn_shadow_check = nullptr;
-    uint32_t seed = 0;
 };
 struct LightOutput {
     glm::vec3 diffuse = {};
@@ -26,6 +25,6 @@ struct ILight {
     ILight() = default;
     virtual ~ILight() = default;
     DOOB_NODISCARD virtual LightOutput Evaluate(
-        const LightInput& input, const ShadingInput& shading, const ShadowingInput& shadowing = {}) const = 0;
+        const LightInput& input, const ShadingInput& shading, uint32_t& seed, const ShadowingInput& shadowing = {}) const = 0;
 };
 } // namespace devs_out_of_bounds

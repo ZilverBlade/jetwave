@@ -9,40 +9,60 @@ public:
     Triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) : m_a(a), m_b(b), m_c(c) {}
 
     DOOB_NODISCARD bool Intersect(const Ray& ray, Intersection* out_intersection) const override {
-        const glm::vec3 ab = m_b - m_a;
-        const glm::vec3 ac = m_c - m_a;
+        const glm::vec3 edge1 = m_b - m_a;
+        const glm::vec3 edge2 = m_c - m_a;
 
-        const glm::vec3 n = glm::normalize(glm::cross(ab, ac));
+        const glm::vec3 pvec = glm::cross(ray.direction, edge2);
 
-        const float cos_angle = glm::dot(ray.direction, n);
-        if (cos_angle >= -std::numeric_limits<float>::epsilon()) {
+        const float det = glm::dot(edge1, pvec);
+
+        if (det < std::numeric_limits<float>::epsilon()) {
             return false;
         }
-        const float t = (glm::dot(n, m_a) - glm::dot(ray.origin, n)) / cos_angle;
-        const glm::vec3 p = ray.origin + t * ray.direction;
 
-        // a + Beta * ab + Gamma * ac = P
-        const glm::vec3 ap = p - m_a;
+        const float inv_det = 1.0f / det;
 
-        float beta = glm::dot(ab, ap) / glm::dot(ab, ab);
-        float gamma = glm::dot(ac, ap) / glm::dot(ac, ab);
+        const glm::vec3 tvec = ray.origin - m_a;
+        const float u = glm::dot(tvec, pvec) * inv_det;
 
-        if ((beta + gamma) > 1.0f || beta < 0.0f || gamma < 0.0f) {
+        if (u < 0.0f || u > 1.0f) {
+            return false;
+        }
+
+        const glm::vec3 qvec = glm::cross(tvec, edge1);
+        const float v = glm::dot(ray.direction, qvec) * inv_det;
+
+        if (v < 0.0f || u + v > 1.0f) {
+            return false;
+        }
+
+        const float t = glm::dot(edge2, qvec) * inv_det;
+
+        if (t < ray.t_min || t > ray.t_max) {
             return false;
         }
 
         if (out_intersection) {
-            out_intersection->position = p;
             out_intersection->t = t;
-            out_intersection->barycentric = { beta, gamma };
-            out_intersection->primitive = 0;
-            out_intersection->normal = n;
-        }
+            out_intersection->position = ray.origin + ray.direction * t;
 
-        return true;
+            out_intersection->barycentric = { u, v };
+            out_intersection->primitive = 0;
+
+            out_intersection->flat_normal = glm::normalize(glm::cross(edge1, edge2));
+        }
     }
 
     DOOB_NODISCARD AABB GetAABB() const override { return AABB(m_a, m_a).Union({ m_b, m_b }).Union({ m_c, m_c }); }
+
+    DOOB_NODISCARD Fragment SampleFragment(const Intersection& intersection) const override {
+        return {
+            .position = intersection.position,
+            .normal = intersection.flat_normal,
+            .tangent = {},
+            .uv = {},
+        };
+    }
 
     glm::vec3 m_a, m_b, m_c;
 };

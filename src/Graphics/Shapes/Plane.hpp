@@ -23,12 +23,21 @@ public:
         if (out_intersection) {
             out_intersection->position = ray.origin + ray.direction * t;
             out_intersection->t = t;
-            out_intersection->normal = m_normal;
+            out_intersection->flat_normal = m_normal;
             out_intersection->barycentric = { 0.0f, 0.0f };
             out_intersection->primitive = 0;
         }
         return true;
     }
+    DOOB_NODISCARD Fragment SampleFragment(const Intersection& intersection) const override {
+        return {
+            .position = intersection.position,
+            .normal = m_normal,
+            .tangent = {},
+            .uv = {},
+        };
+    }
+
     DOOB_NODISCARD AABB GetAABB() const override {
         return AABB{
             .min = { -INFINITY, -INFINITY, -INFINITY },

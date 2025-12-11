@@ -1,15 +1,8 @@
-/*
- * This example code creates an SDL window and renderer, and then clears the
- * window to a different color every frame, so you'll effectively get a window
- * that's smoothly fading between colors.
- *
- * This code is public domain. Feel free to use it for any purpose!
- */
-
 #include <thread>
 #include <vector>
 
 #include <src/Renderer/PathTracer.hpp>
+#include <src/Graphics/Random.hpp>
 
 #define SDL_MAIN_USE_CALLBACKS 1 /* use the callbacks instead of main() */
 #include <SDL3/SDL.h>
@@ -30,8 +23,95 @@ static SDL_FRect g_dest_rect = {};
 static Pixel* g_framebuffer = nullptr;
 static devs_out_of_bounds::PathTracer* g_path_tracer = nullptr;
 
-static constexpr int THREAD_DISPATCH_X = 32;
-static constexpr int THREAD_DISPATCH_Y = 32;
+static std::vector<std::thread> g_worker_threads;
+static std::atomic_int g_threads_active_count = { 0 };
+
+// Add explicit padding to prevent False Sharing between these two hot variables
+// (Aligns them to different 64-byte cache lines)
+struct alignas(64) AlignedAtomic {
+    std::atomic_int val;
+};
+static AlignedAtomic g_hot_index; // Replaces g_next_tile_index
+
+static int g_frame_generation = 0;
+static std::condition_variable g_cv_start_work;
+static std::condition_variable g_cv_all_work_finished;
+static std::mutex g_work_mutex;
+static std::mutex g_completion_mutex;
+static int g_total_tiles = 0;
+static int g_curr_width = 1;
+static int g_curr_height = 1;
+static int g_num_tiles_x = 1;
+static int g_num_tiles_y = 1;
+static bool g_should_exit = false;
+
+static constexpr int THREAD_DISPATCH_X = 64;
+static constexpr int THREAD_DISPATCH_Y = 64;
+
+static void RenderRegion(
+    int dispatch_id, uint32_t& seed, int x_start, int y_start, int width, int height, int fb_width);
+
+static void InitThreads() {
+
+// 4. Launch Threads
+// Only launch as many threads as you have cores.
+#ifdef NDEBUG
+    unsigned int core_count = std::thread::hardware_concurrency();
+#else
+    // make it easier to debug!
+    unsigned int core_count = 1;
+#endif
+    for (unsigned int i = 0; i < core_count; ++i) {
+        g_worker_threads.emplace_back([dispatch_id = i]() {
+            int my_local_gen = 0;
+            uint32_t seed = dispatch_id;
+            RandomStateAdvance(seed);
+            while (true) {
+                // --- Wait Phase ---
+                {
+                    std::unique_lock<std::mutex> lock(g_work_mutex);
+                    g_cv_start_work.wait(lock, [&] {
+                        // Wake up ONLY if the global generation is newer than mine
+                        return (g_frame_generation > my_local_gen) || g_should_exit;
+                    });
+                }
+                if (g_should_exit)
+                    return;
+                // Update my generation so I don't run this frame twice
+                my_local_gen = g_frame_generation;
+
+                // --- Work Phase ---
+                while (true) {
+                    int my_job_index = g_hot_index.val.fetch_add(1);
+
+                    if (my_job_index >= g_total_tiles) {
+                        break; // No more tiles
+                    }
+
+                    // Render Logic
+                    int tile_x_index = my_job_index % g_num_tiles_x;
+                    int tile_y_index = my_job_index / g_num_tiles_x;
+                    int pixel_x = tile_x_index * THREAD_DISPATCH_X;
+                    int pixel_y = tile_y_index * THREAD_DISPATCH_Y;
+                    int current_draw_w = std::min(THREAD_DISPATCH_X, g_curr_width - pixel_x);
+                    int current_draw_h = std::min(THREAD_DISPATCH_Y, g_curr_height - pixel_y);
+
+                    RenderRegion(dispatch_id, seed, pixel_x, pixel_y, current_draw_w, current_draw_h, g_curr_width);
+                }
+
+                // --- Completion Phase ---
+                // Decrement active count. fetch_sub returns the value BEFORE decrementing.
+                int remaining_threads = g_threads_active_count.fetch_sub(1) - 1;
+
+                if (remaining_threads == 0) {
+                    // Last thread notifies Main
+                    std::lock_guard<std::mutex> lock(g_completion_mutex);
+                    g_cv_all_work_finished.notify_one();
+                }
+            }
+        });
+    }
+}
 
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
@@ -64,7 +144,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
 
     g_path_tracer = new devs_out_of_bounds::PathTracer();
     g_path_tracer->OnResize(initial_w, initial_h);
-
+    InitThreads();
     return SDL_APP_CONTINUE; /* carry on with the program! */
 }
 
@@ -98,7 +178,13 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
         if (event->key.key == SDLK_B && !event->key.repeat) {
             g_path_tracer->m_parameters.max_light_bounces = (g_path_tracer->m_parameters.max_light_bounces + 1) % 5;
         }
-        return SDL_APP_CONTINUE; 
+        if (event->key.key == SDLK_T && !event->key.repeat) {
+            g_path_tracer->m_parameters.b_gt7_tonemapper = !g_path_tracer->m_parameters.b_gt7_tonemapper;
+        }
+        if (event->key.key == SDLK_A && !event->key.repeat) {
+            g_path_tracer->m_parameters.b_accumulate = !g_path_tracer->m_parameters.b_accumulate;
+        }
+        return SDL_APP_CONTINUE;
     }
     default:
         return SDL_APP_CONTINUE; /* carry on with the program! */
@@ -127,7 +213,9 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     SDL_SetRenderDrawColor(g_renderer, 255, 255, 255, 255);
     SDL_RenderDebugTextFormat(g_renderer, 16.f, 16.f, "X-Wave | FPS: %i, Frame Time: %.2f ms",
         static_cast<int>(1.0 / frame_time), 1000.0f * frame_time);
-    SDL_RenderDebugTextFormat(g_renderer, 16.f, 26.f, "Max Light Bounces: %i", g_path_tracer->m_parameters.max_light_bounces);
+    SDL_RenderDebugTextFormat(g_renderer, 16.f, 26.f, "Max Light Bounces: %i | Tone Mapper: %s | Accumulating: %s",
+        g_path_tracer->m_parameters.max_light_bounces, g_path_tracer->m_parameters.b_gt7_tonemapper ? "GT7" : "Exp",
+        g_path_tracer->m_parameters.b_accumulate ? "yes" : "no");
 
     SDL_RenderPresent(g_renderer);
     return SDL_APP_CONTINUE; /* carry on with the program! */
@@ -135,6 +223,18 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 
 /* This function runs once at shutdown. */
 void SDL_AppQuit(void* appstate, SDL_AppResult result) {
+    {
+        std::lock_guard<std::mutex> lock(g_work_mutex);
+        g_should_exit = true;
+    }
+    g_cv_start_work.notify_all();
+
+    for (auto& t : g_worker_threads) {
+        if (t.joinable())
+            t.join();
+    }
+    g_worker_threads.clear();
+
     delete g_path_tracer;
     g_path_tracer = nullptr;
     if (g_framebuffer) {
@@ -143,84 +243,47 @@ void SDL_AppQuit(void* appstate, SDL_AppResult result) {
     }
 }
 
-static void RenderRegion(int dispatch_id, int x_start, int y_start, int width, int height, int fb_width) {
+void RenderRegion(int dispatch_id, uint32_t& seed, int x_start, int y_start, int width, int height, int fb_width) {
     int x_end = x_start + width;
     int y_end = y_start + height;
 
     for (int y = y_start; y < y_end; ++y) {
         Pixel* row_ptr = &g_framebuffer[y * fb_width];
         for (int x = x_start; x < x_end; ++x) {
-            row_ptr[x] = g_path_tracer->Evaluate(x, y);
+            row_ptr[x] = g_path_tracer->Evaluate(x, y, seed);
+            RandomStateAdvance(seed);
         }
     }
 }
 void DrawFramebuffer(int width, int height) {
-    // 1. Calculate grid dimensions
-    const int tile_w = THREAD_DISPATCH_X;
-    const int tile_h = THREAD_DISPATCH_Y;
+    g_curr_width = width;
+    g_curr_height = height;
 
-    // Integer division that rounds up to ensure we cover edges
-    const int num_tiles_x = (width + tile_w - 1) / tile_w;
-    const int num_tiles_y = (height + tile_h - 1) / tile_h;
-    const int total_tiles = num_tiles_x * num_tiles_y;
+    int num_tiles_x = (width + THREAD_DISPATCH_X - 1) / THREAD_DISPATCH_X;
+    int num_tiles_y = (height + THREAD_DISPATCH_Y - 1) / THREAD_DISPATCH_Y;
+    g_num_tiles_x = num_tiles_x;
+    g_total_tiles = num_tiles_x * num_tiles_y;
 
-    // 2. The Shared Counter
-    // This atomic integer represents the next tile "job" waiting to be done.
-    std::atomic_int next_tile_index{ 0 };
+    // Reset Job Counter
+    g_hot_index.val = 0;
 
-    // 3. The Worker Function
-    // This lambda will run on every thread. It keeps grabbing work until none is left.
-    auto worker = [&](int dispatch_id) {
-        while (true) {
-            // "fetch_add" atomically grabs the current value and increments it.
-            // This is thread-safe and lock-free.
-            int my_job_index = next_tile_index.fetch_add(1);
+    // Set active threads to the total count
+    g_threads_active_count = g_worker_threads.size();
 
-            // If the index is out of bounds, we are done.
-            if (my_job_index >= total_tiles) {
-                return;
-            }
+    // --- WAKE WORKERS ---
+    {
+        std::lock_guard<std::mutex> lock(g_work_mutex);
+        g_frame_generation++; // Increment Ticket Number
+    }
+    g_cv_start_work.notify_all();
 
-            // Convert linear index (0, 1, 2...) back to 2D Grid Coordinates
-            int tile_x_index = my_job_index % num_tiles_x;
-            int tile_y_index = my_job_index / num_tiles_x;
-
-            // Convert Grid Coordinates to Pixel Coordinates
-            int pixel_x = tile_x_index * tile_w;
-            int pixel_y = tile_y_index * tile_h;
-
-            // Handle edge cases (don't draw off the screen)
-            int current_draw_w = std::min(tile_w, width - pixel_x);
-            int current_draw_h = std::min(tile_h, height - pixel_y);
-
-            // Draw
-            RenderRegion(dispatch_id, pixel_x, pixel_y, current_draw_w, current_draw_h, width);
-        }
-    };
-
-// 4. Launch Threads
-// Only launch as many threads as you have cores.
-#ifdef NDEBUG
-    unsigned int core_count = std::thread::hardware_concurrency();
-#else
-    // make it easier to debug!
-    unsigned int core_count = 1;
-#endif
-    std::vector<std::thread> threads;
-
-    // We run (core_count - 1) threads, and let the main thread help too
-    // to avoid context switching overhead.
-    for (unsigned int i = 1; i < core_count; ++i) {
-        threads.emplace_back(std::bind(worker, i));
+    // --- WAIT FOR COMPLETION ---
+    {
+        std::unique_lock<std::mutex> lock(g_completion_mutex);
+        // Wait until all threads have checked out
+        g_cv_all_work_finished.wait(lock, [] { return g_threads_active_count == 0; });
     }
 
-    // Main thread also does work!
-    worker(0);
-
-    // 5. Cleanup
-    // Wait for all helpers to finish.
-    for (auto& t : threads) {
-        if (t.joinable())
-            t.join();
-    }
+    // Note: We no longer need to "Reset" a boolean flag here.
+    // The generation counter naturally handles the state.
 }
