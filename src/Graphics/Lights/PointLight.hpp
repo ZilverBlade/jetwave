@@ -8,42 +8,14 @@ public:
     PointLight(const glm::vec3& position, const glm::vec3& intensity)
         : m_position(position), m_intensity(intensity) {}
 
-    DOOB_NODISCARD LightOutput Evaluate(const LightInput& input, const ShadingInput& shading, uint32_t& seed,
-        const ShadowingInput& shadowing) const override {
+    LightSample Sample(const glm::vec3& P, uint32_t& seed) const override {
+        glm::vec3 d = m_position - P;
+        float distSq = glm::dot(d, d);
+        float dist = std::sqrt(distSq);
 
-        RandomStateAdvance(seed);
-
-        const glm::vec3 fragToLight = m_position - input.P;
-        float distSq = glm::dot(fragToLight, fragToLight);
-        const float dist = glm::sqrt(distSq);
-        glm::vec3 L = fragToLight / dist;
-
-        if (shadowing.fn_shadow_check) {
-            bool visibility = shadowing.fn_shadow_check(
-                {
-                    .origin = input.P,
-                    .t_min = 0.001f,
-                    .direction = L,
-                    .t_max = dist,
-                },
-                shadowing.userdata);
-            if (!visibility) {
-                return {};
-            }
-        }
-
-        const float attenuation = 1.0f / distSq;
-
-        const glm::vec3 H = glm::normalize(L + input.V);
-        const float NdH = glm::max(glm::dot(input.N, H), 0.0f);
-
-        const float spec = glm::pow(NdH, shading.specular_power);
-
-        glm::vec3 attenuated = glm::max(glm::dot(input.N, L), 0.0f) * attenuation * m_intensity;
-        return {
-            .diffuse = attenuated,
-            .specular = attenuated * spec,
-        };
+        return { .L = d / dist,
+            .Li = m_intensity * (1.0f / distSq), 
+            .dist = dist };
     }
 
     glm::vec3 m_position;

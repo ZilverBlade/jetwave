@@ -3,28 +3,14 @@
 #include <src/Graphics/Ray.hpp>
 
 namespace devs_out_of_bounds {
-struct LightInput {
-    glm::vec3 eye = {};
-    glm::vec3 P = {};
-    glm::vec3 V = {};
-    glm::vec3 N = {};
-};
-struct ShadingInput {
-    float specular_power = {};
-};
-struct ShadowingInput {
-    const void* userdata = nullptr;
-    // return true if visible
-    FunctionPtr<bool(const Ray&, const void*)> fn_shadow_check = nullptr;
-};
-struct LightOutput {
-    glm::vec3 diffuse = {};
-    glm::vec3 specular = {};
+struct LightSample {
+    glm::vec3 L;  // Direction FROM surface TO light (normalized)
+    glm::vec3 Li; // Incoming Radiance (Color * Intensity * Attenuation)
+    float dist;   // Distance to the light (for shadow check)
 };
 struct ILight {
     ILight() = default;
     virtual ~ILight() = default;
-    DOOB_NODISCARD virtual LightOutput Evaluate(
-        const LightInput& input, const ShadingInput& shading, uint32_t& seed, const ShadowingInput& shadowing = {}) const = 0;
+    DOOB_NODISCARD virtual LightSample Sample(const glm::vec3& P, uint32_t& seed) const = 0;
 };
 } // namespace devs_out_of_bounds

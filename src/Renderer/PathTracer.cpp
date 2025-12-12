@@ -281,28 +281,35 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
 
 void PathTracer::ComputeDirectLighting(const DrawableActor& actor, const Intersection& hit, const glm::vec3& V,
     uint32_t& seed, glm::vec3& out_diffuse, glm::vec3& out_specular) const {
+    out_diffuse = {};
+    out_specular = {};
 
     // Recalculate basic properties needed for light evaluation
     Fragment fragment = actor.shape->SampleFragment(hit);
     MaterialOutput material = actor.material->Evaluate(fragment);
 
-    LightInput light_input;
-    light_input.P = hit.position;
-    light_input.eye = light_input.P + V;
-    light_input.V = V;
-    light_input.N = material.world_normal;
+    const glm::vec3 P = hit.position;
+    const glm::vec3 eye = P + V;
+    const glm::vec3 N = material.world_normal;
 
     for (const auto& light_actor : m_light_actors) {
-        auto ShadowCheck = [](const Ray& shadow_ray, const void* userdata) -> bool {
-            const PathTracer* pt = reinterpret_cast<const PathTracer*>(userdata);
-            return !pt->IsOccluded(shadow_ray);
-        };
+        LightSample sample = light_actor.light->Sample(hit.position, seed);
+        if (this->IsOccluded({
+                .origin = P + hit.flat_normal * 0.0001f,
+                .t_min = 0.001f,
+                .direction = sample.L,
+                .t_max = sample.dist,
+            })) {
+            continue;
+        }
 
-        LightOutput result = light_actor.light->Evaluate(light_input, { .specular_power = material.specular_power },
-            seed, { .userdata = this, .fn_shadow_check = ShadowCheck });
+        const glm::vec3 H = glm::normalize(sample.L + V);
+        const float NdH = glm::max(glm::dot(N, H), 0.0f);
 
-        out_diffuse += result.diffuse;
-        out_specular += result.specular;
+        const float spec = glm::pow(NdH, material.specular_power);
+
+        out_diffuse += NdH * sample.Li;
+        out_specular += NdH * spec;
     }
 
     out_diffuse *= material.albedo_color;

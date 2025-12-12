@@ -8,51 +8,25 @@ public:
     AreaLight(const glm::vec3& center, const glm::vec2& extent, const glm::vec3& intensity)
         : m_center(center), m_extent(extent), m_intensity(intensity) {}
 
-    DOOB_NODISCARD LightOutput Evaluate(const LightInput& input, const ShadingInput& shading, uint32_t& seed,
-        const ShadowingInput& shadowing) const override {
+    LightSample Sample(const glm::vec3& P, uint32_t& seed) const override {
+        float offx = m_extent.x * (2.0f * RandomFloatAdv(seed) - 1.0f);
+        float offy = m_extent.y * (2.0f * RandomFloatAdv(seed) - 1.0f);
 
-        static constexpr glm::vec3 RIGHT = { 1, 0, 0 };
-        static constexpr glm::vec3 FORWARD = { 0, 0, 1 };
+        glm::vec3 lightPos = m_center + glm::vec3(offx, 0, offy);
 
-        const float offx = m_extent.x * (2.0f * RandomFloatAdv(seed) - 1.0f);
-        const float offy = m_extent.y * (2.0f * RandomFloatAdv(seed) - 1.0f);
-        glm::vec3 light = m_center + RIGHT * offx + FORWARD * offy;
+        glm::vec3 d = lightPos - P;
+        float distSq = glm::dot(d, d);
+        float dist = std::sqrt(distSq);
+        glm::vec3 L = d / dist;
 
-        const glm::vec3 fragToLight = light - input.P;
-        float distSq = glm::dot(fragToLight, fragToLight);
-        const float dist = glm::sqrt(distSq);
-        glm::vec3 L = fragToLight / dist;
+        float cos_light = glm::max(glm::dot(m_normal, -L), 0.0f);
+        float area = (m_extent.x * 2.0f) * (m_extent.y * 2.0f);
 
-        if (shadowing.fn_shadow_check) {
-            bool visibility = shadowing.fn_shadow_check(
-                {
-                    .origin = input.P,
-                    .t_min = 0.001f,
-                    .direction = L,
-                    .t_max = dist,
-                },
-                shadowing.userdata);
-            if (!visibility) {
-                return {};
-            }
-        }
-
-        const float attenuation = 1.0f / distSq * glm::max(glm::dot(input.N, -L), 0.0f) * m_extent.x * m_extent.y;
-
-        const glm::vec3 H = glm::normalize(L + input.V);
-        const float NdH = glm::max(glm::dot(input.N, H), 0.0f);
-
-        const float spec = glm::pow(NdH, shading.specular_power);
-
-        glm::vec3 attenuated = attenuation * m_intensity;
-        return {
-            .diffuse = attenuated,
-            .specular = attenuated * spec,
-        };
+        return { .L = L, .Li = m_intensity * (cos_light * area / distSq), .dist = dist };
     }
 
     glm::vec3 m_center;
-    glm::vec3 m_normal;
+    glm::vec3 m_normal = { 0, -1, 0 };
     glm::vec2 m_extent;
     glm::vec3 m_intensity;
 };

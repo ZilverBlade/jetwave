@@ -9,35 +9,13 @@ public:
         : m_direction(glm::normalize(direction)), m_intensity(intensity),
           m_src_cos_angle(glm::cos(glm::radians(src_angle_deg))) {}
 
-    DOOB_NODISCARD LightOutput Evaluate(const LightInput& input, const ShadingInput& shading, uint32_t& seed,
-        const ShadowingInput& shadowing) const override {
-
-        RandomStateAdvance(seed);
-
+    LightSample Sample(const glm::vec3& P, uint32_t& seed) const override {
         glm::vec3 L = RandomCone(-m_direction, m_src_cos_angle, seed);
 
-        if (shadowing.fn_shadow_check) {
-            bool visibility = shadowing.fn_shadow_check(
-                {
-                    .origin = input.P,
-                    .t_min = 0.001f,
-                    .direction = L,
-                },
-                shadowing.userdata);
-            if (!visibility) {
-                return {};
-            }
-        }
-
-        const glm::vec3 H = glm::normalize(L + input.V);
-        const float NdH = glm::max(glm::dot(input.N, H), 0.0f);
-
-        const float spec = glm::pow(NdH, shading.specular_power);
-
-        glm::vec3 attenuated = glm::max(glm::dot(input.N, L), 0.0f) * m_intensity;
         return {
-            .diffuse = attenuated,
-            .specular = attenuated * spec,
+            .L = L,
+            .Li = m_intensity, 
+            .dist = INFINITY,
         };
     }
 
