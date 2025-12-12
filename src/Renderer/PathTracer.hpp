@@ -8,6 +8,7 @@ struct PathTracerParameters {
     int max_light_bounces = 0; 
     bool b_gt7_tonemapper = false;
     bool b_accumulate = false;
+    float m_log_camera_exposure = 0.0f;
 };
 
 class PathTracer : NoCopy, NoMove {
@@ -20,7 +21,7 @@ public:
 
     DOOB_NODISCARD Pixel Evaluate(int x, int y, uint32_t seed) const;
 
-
+    void ResetAccumulator();
     uint32_t GetSamplesAccumulated() const { return m_accumulation_count; }
 
 public:
@@ -68,5 +69,10 @@ private:
     int m_width = 1;
     float m_ar = 1.0f;
     Camera m_camera = {};
+
+    glm::vec3 m_camera_position = {};
+    float m_camera_pitch = 0.0f;
+    float m_camera_yaw = 0.0f;
+
 };
 } // namespace devs_out_of_bounds

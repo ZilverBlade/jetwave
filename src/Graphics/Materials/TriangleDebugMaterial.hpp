@@ -4,8 +4,7 @@
 namespace devs_out_of_bounds {
 class TriangleDebugMaterial : public IMaterial {
 public:
-    TriangleDebugMaterial()
-        {}
+    TriangleDebugMaterial() {}
 
     // UV is barycentric here
     DOOB_NODISCARD MaterialOutput Evaluate(const Fragment& input) const override {
@@ -16,9 +15,10 @@ public:
         return {
             .world_normal = input.normal,
             .albedo_color = glm::vec3(a, b, c),
-            .specular_color = glm::vec3(1,1,1),
+            .specular_color = glm::vec3(1, 1, 1),
             .specular_power = 64.0f,
         };
     }
+    DOOB_NODISCARD bool EvaluateDiscard(const Fragment& input) const override { return false; }
 };
 } // namespace devs_out_of_bounds

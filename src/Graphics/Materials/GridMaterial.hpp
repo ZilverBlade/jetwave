@@ -16,6 +16,7 @@ public:
             .specular_power = 16.0f,
         };
     }
+    DOOB_NODISCARD bool EvaluateDiscard(const Fragment& input) const override { return false; }
 
     float m_grid_size = 0.5f;
     glm::vec3 m_grid_background = { 0.4f, 0.4f, 0.4f };

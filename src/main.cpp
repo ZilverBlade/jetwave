@@ -1,8 +1,8 @@
 #include <thread>
 #include <vector>
 
-#include <src/Renderer/PathTracer.hpp>
 #include <src/Graphics/Random.hpp>
+#include <src/Renderer/PathTracer.hpp>
 
 #define SDL_MAIN_USE_CALLBACKS 1 /* use the callbacks instead of main() */
 #include <SDL3/SDL.h>
@@ -175,13 +175,14 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
         return SDL_APP_CONTINUE;
     }
     case SDL_EVENT_KEY_DOWN: {
-        if (event->key.key == SDLK_B && !event->key.repeat) {
+        if (event->key.key == SDLK_1 && !event->key.repeat) {
             g_path_tracer->m_parameters.max_light_bounces = (g_path_tracer->m_parameters.max_light_bounces + 1) % 5;
+            g_path_tracer->ResetAccumulator();
         }
-        if (event->key.key == SDLK_T && !event->key.repeat) {
+        if (event->key.key == SDLK_2 && !event->key.repeat) {
             g_path_tracer->m_parameters.b_gt7_tonemapper = !g_path_tracer->m_parameters.b_gt7_tonemapper;
         }
-        if (event->key.key == SDLK_A && !event->key.repeat) {
+        if (event->key.key == SDLK_0 && !event->key.repeat) {
             g_path_tracer->m_parameters.b_accumulate = !g_path_tracer->m_parameters.b_accumulate;
         }
         return SDL_APP_CONTINUE;
@@ -201,6 +202,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     float frame_time = duration.count();
     last_frame = current_frame;
 
+
     g_path_tracer->OnUpdate(frame_time);
 
     SDL_RenderClear(g_renderer);
@@ -213,9 +215,10 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     SDL_SetRenderDrawColor(g_renderer, 255, 255, 255, 255);
     SDL_RenderDebugTextFormat(g_renderer, 16.f, 16.f, "X-Wave | FPS: %i, Frame Time: %.2f ms",
         static_cast<int>(1.0 / frame_time), 1000.0f * frame_time);
-    SDL_RenderDebugTextFormat(g_renderer, 16.f, 26.f, "Max Light Bounces: %i | Tone Mapper: %s | Samples: %u",
+    SDL_RenderDebugTextFormat(g_renderer, 16.f, 26.f,
+        "Max Light Bounces: %i | Tone Mapper: %s | Exposure: %.2f | Samples: %u",
         g_path_tracer->m_parameters.max_light_bounces, g_path_tracer->m_parameters.b_gt7_tonemapper ? "GT7" : "Exp",
-        g_path_tracer->GetSamplesAccumulated());
+        expf(g_path_tracer->m_parameters.m_log_camera_exposure), g_path_tracer->GetSamplesAccumulated());
 
     SDL_RenderPresent(g_renderer);
     return SDL_APP_CONTINUE; /* carry on with the program! */

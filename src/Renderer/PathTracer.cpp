@@ -5,12 +5,14 @@
 #include <src/Graphics/Lights/PointLight.hpp>
 #include <src/Graphics/Materials/BasicMaterial.hpp>
 #include <src/Graphics/Materials/GltfMaterial.hpp>
-#include <src/Graphics/Materials/GridMaterial.hpp>
 #include <src/Graphics/Materials/GridCutoutMaterial.hpp>
+#include <src/Graphics/Materials/GridMaterial.hpp>
 #include <src/Graphics/Materials/TriangleDebugMaterial.hpp>
 #include <src/Graphics/Shapes/Plane.hpp>
 #include <src/Graphics/Shapes/Sphere.hpp>
 #include <src/Graphics/Shapes/Triangle.hpp>
+
+#include <SDL3/SDL.h>
 
 namespace devs_out_of_bounds {
 
@@ -19,6 +21,8 @@ static TriangleDebugMaterial g_debug_mat = TriangleDebugMaterial();
 static GridMaterial g_grid_mat = GridMaterial();
 static GridCutoutMaterial g_cookie_mat = GridCutoutMaterial();
 static std::vector<PointLight> g_point_lights;
+
+constexpr float CAMERA_FOV_DEG = 90.0f;
 
 PathTracer::PathTracer() {
     m_scene = new Scene();
@@ -39,12 +43,83 @@ void PathTracer::OnResize(int new_width, int new_height) {
     m_ar = static_cast<float>(new_width) * inv_height;
     m_accumulator.resize(static_cast<size_t>(new_width) * new_height);
     m_width = new_width;
-    m_accumulation_count = 0;
-    m_accumulator.clear();
+    ResetAccumulator();
 }
 
 void PathTracer::OnUpdate(float frame_time) {
     static float accum = 0.0f;
+
+    { // INPUT
+        bool b_moved_camera = false;
+        const bool* state = SDL_GetKeyboardState(nullptr);
+
+        glm::vec3 camera_move = {};
+
+        glm::vec3 forward = { -sin(m_camera_yaw), sin(m_camera_pitch), cos(m_camera_yaw) };
+        glm::vec3 right = { cos(m_camera_yaw), 0.0f, sin(m_camera_yaw) };
+        glm::vec3 up = { 0, 1, 0 };
+
+        if (state[SDL_SCANCODE_W]) {
+            b_moved_camera = true;
+            camera_move += forward;
+        }
+        if (state[SDL_SCANCODE_A]) {
+            b_moved_camera = true;
+            camera_move -= right;
+        }
+        if (state[SDL_SCANCODE_S]) {
+            b_moved_camera = true;
+            camera_move -= forward;
+        }
+        if (state[SDL_SCANCODE_D]) {
+            b_moved_camera = true;
+            camera_move += right;
+        }
+        if (state[SDL_SCANCODE_SPACE]) {
+            b_moved_camera = true;
+            camera_move += up;
+        }
+        if (state[SDL_SCANCODE_LCTRL]) {
+            b_moved_camera = true;
+            camera_move -= up;
+        }
+
+        if (state[SDL_SCANCODE_LEFT]) {
+            b_moved_camera = true;
+            m_camera_yaw += frame_time;
+        }
+        if (state[SDL_SCANCODE_RIGHT]) {
+            b_moved_camera = true;
+            m_camera_yaw -= frame_time;
+        }
+        if (state[SDL_SCANCODE_UP]) {
+            b_moved_camera = true;
+            m_camera_pitch += frame_time;
+        }
+        if (state[SDL_SCANCODE_DOWN]) {
+            b_moved_camera = true;
+            m_camera_pitch -= frame_time;
+        }
+        m_camera_pitch = std::clamp(m_camera_pitch, -glm::half_pi<float>() + 0.1f, glm::half_pi<float>() - 0.1f);
+
+        if (b_moved_camera) {
+            ResetAccumulator();
+
+            if (glm::dot(camera_move, camera_move) > std::numeric_limits<float>::epsilon()) {
+                m_camera.SetPosition(m_camera.GetPosition() + glm::normalize(camera_move) * frame_time);
+            }
+            m_camera.LookDir(forward, CAMERA_FOV_DEG);
+        }
+
+
+        if (state[SDL_SCANCODE_MINUS]) {
+            m_parameters.m_log_camera_exposure -= 4.0f * frame_time;
+        }
+        if (state[SDL_SCANCODE_EQUALS]) {
+            m_parameters.m_log_camera_exposure += 4.0f * frame_time;
+        }
+    }
+
     if (!m_parameters.b_accumulate) {
         m_accumulation_count = 1;
         int index = 0;
@@ -84,15 +159,16 @@ Pixel PathTracer::Evaluate(int x, int y, uint32_t seed) const {
     }
 
     glm::vec3 color_avg = static_cast<glm::vec3>(summed / static_cast<double>(m_accumulation_count));
+    glm::vec3 hdr = color_avg * expf(m_parameters.m_log_camera_exposure);
 
     if (m_parameters.b_gt7_tonemapper) {
         GT7ToneMapping TM;
         initializeAsSDR(TM);
-        applyToneMapping(color_avg, TM);
+        applyToneMapping(hdr, TM);
     } else {
-        color_avg = 1.0f - exp(-color_avg);
+        hdr = 1.0f - exp(-hdr);
     }
-    glm::vec3 gamma_corrected = glm::pow(color_avg, glm::vec3(1.0f / 2.2f));
+    glm::vec3 gamma_corrected = glm::pow(hdr, glm::vec3(1.0f / 2.2f));
 
     float state = glm::dot(glm::vec3(x, y, 0.23142151f), glm::vec3(43523.432532f, 2132.343f, 123.52122f));
     uint32_t pixel_seed = reinterpret_cast<uint32_t&>(state) & 0x7FFFFF;
@@ -103,6 +179,13 @@ Pixel PathTracer::Evaluate(int x, int y, uint32_t seed) const {
 
     return DOOB_WRITE_PIXEL_F32(gamma_corrected.r + r_dither_offset, gamma_corrected.g + g_dither_offset,
         gamma_corrected.b + b_dither_offset, 1.0f);
+}
+
+void PathTracer::ResetAccumulator() {
+    m_accumulation_count = 0;
+    size_t s = m_accumulator.size();
+    m_accumulator.clear();
+    m_accumulator.resize(s);
 }
 
 // --- The Core Refactor: Path Logic ---
@@ -207,6 +290,9 @@ bool PathTracer::IntersectScene(const Ray& ray, Intersection* out_intersection, 
     for (const auto& actor : m_drawable_actors) {
         Intersection curr_intersection;
         if (actor.shape->Intersect(ray, &curr_intersection)) {
+            if (actor.material->EvaluateDiscard(actor.shape->SampleFragment(curr_intersection))) {
+                continue;
+            }
             if (curr_intersection.t < closest_hit.t) {
                 closest_hit = curr_intersection;
                 closest_actor = actor;
@@ -227,7 +313,11 @@ bool PathTracer::IntersectScene(const Ray& ray, Intersection* out_intersection, 
 
 bool PathTracer::IsOccluded(const Ray& ray) const {
     for (const auto& actor : m_drawable_actors) {
-        if (actor.shape->Intersect(ray, nullptr)) {
+        Intersection intersection;
+        if (actor.shape->Intersect(ray, &intersection)) {
+            if (actor.material->EvaluateDiscard(actor.shape->SampleFragment(intersection))) {
+                continue;
+            }
             return true;
         }
     }
@@ -237,7 +327,7 @@ bool PathTracer::IsOccluded(const Ray& ray) const {
 glm::vec3 PathTracer::SampleSky(const glm::vec3& direction) const {
     static glm::vec3 ambient_color = { 0.51f, 0.53f, 0.54f };
     float t = 0.5f * (direction.y + 1.0f);
-    return (1.0f - t) * glm::vec3(1.0f) + t* glm::vec3(0.5f, 0.7f, 1.0f) * 0.5f;
+    return (1.0f - t) * glm::vec3(1.0f) + t * glm::vec3(0.5f, 0.7f, 1.0f) * 0.5f;
 }
 
 void PathTracer::RebuildAccelerationStructures() {}
@@ -248,7 +338,7 @@ void PathTracer::LoadScene() {
     m_plane_actor = m_scene->NewDrawableActor(&plane1, &g_grid_mat);
 
     static Sphere sphere1 = Sphere({ 0.0f, 0.0f, 5.0f }, 1.0f);
-    ActorId sphere_actor = m_scene->NewDrawableActor(&sphere1, &g_default_mat);
+    ActorId sphere_actor = m_scene->NewDrawableActor(&sphere1, &g_cookie_mat);
 
     static Triangle triangle1 = Triangle({ 0, 0, 3 }, { 0, 3, 3 }, { 1, 1, 4 });
 
@@ -257,12 +347,11 @@ void PathTracer::LoadScene() {
     g_point_lights.clear();
     g_point_lights.reserve(light_colors.size());
     for (int i = 0; i < light_colors.size(); ++i) {
-        g_point_lights.push_back(PointLight({ 0, 10, 0 }, light_colors[i] * 10.0f));
+        g_point_lights.push_back(PointLight({ 0, 10, 0 }, light_colors[i] * 50.0f));
         m_light_actor = m_scene->NewLightActor(&g_point_lights.back());
-        break;
     }
 
-    static AreaLight area_light1 = AreaLight({ 0, 4.0f, 8 }, { 1, 2 }, { 60, 60, 60 });
+    static AreaLight area_light1 = AreaLight({ 0, 4.0f, 8 }, { 1, 2 }, { 150, 150, 150 });
     ActorId light_actor1 = m_scene->NewLightActor(&area_light1);
 }
 void PathTracer::BakeScene() {

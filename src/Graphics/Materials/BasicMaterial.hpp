@@ -15,6 +15,7 @@ public:
             .specular_power = m_specular_power,
         };
     }
+    DOOB_NODISCARD bool EvaluateDiscard(const Fragment& input) const override { return false; }
     glm::vec3 m_albedo_color;
     glm::vec3 m_specular_color;
     float m_specular_power;

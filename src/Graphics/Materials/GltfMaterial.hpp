@@ -16,26 +16,16 @@ public:
         using namespace glm;
         using glm::vec3;
 
-        if (!b_double_sided && !input.b_front_face) {
-            return { .b_discard = true };
-        }
         MaterialOutput output;
         vec4 base_color = base_color_factor;
         if (sampler_state && base_color_texture) {
             base_color *= sampler_state->Sample(base_color_texture, input.uv);
         }
         if (blend_mode == BlendMode::Blend) {
-            if (base_color.a <= 0.0f) {
-                return { .b_discard = true };
-            }
             output.opacity = base_color.a;
         } else {
-            if (blend_mode == BlendMode::Mask && base_color.a < alpha_cutoff) {
-                return { .b_discard = true };
-            }
             output.opacity = 1.0f;
         }
-        output.b_discard = false;
         output.albedo_color = base_color_factor;
         output.emission_color = emissive_factor;
 
@@ -86,6 +76,28 @@ public:
 
         return output;
     }
+    DOOB_NODISCARD bool EvaluateDiscard(const Fragment& input) const override {
+        using namespace glm;
+        using glm::vec3;
+        
+        if (!b_double_sided && !input.b_front_face) {
+            return true;
+        }
+        MaterialOutput output;
+        vec4 base_color = base_color_factor;
+        if (sampler_state && base_color_texture) {
+            base_color *= sampler_state->Sample(base_color_texture, input.uv);
+        }
+        if (blend_mode == BlendMode::Blend) {
+            return true;
+        } else {
+            if (blend_mode == BlendMode::Mask && base_color.a < alpha_cutoff) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     ISamplerState* sampler_state = {};
 

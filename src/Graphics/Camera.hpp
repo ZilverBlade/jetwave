@@ -17,8 +17,8 @@ public:
         m_focal_length = 1.0f / glm::tan(camera_fov * 0.5f);
 
         m_forward = ray;
-        m_right = glm::cross(m_forward, up);
-        m_up = glm::cross(m_right, m_forward);
+        m_right = glm::normalize(glm::cross(up, m_forward));
+        m_up = glm::normalize(glm::cross(m_forward, m_right));
     }
     DOOB_FORCEINLINE void LookAt(
         const glm::vec3& origin, const glm::vec3& target, float fov_degrees, const glm::vec3& up = { 0, 1, 0 }) {
