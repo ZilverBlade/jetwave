@@ -1,7 +1,7 @@
 #pragma once
 
+#include <src/Core.hpp>
 #include <vector>
-#include <SWEngine/Math/Math.hpp>
 
 
 namespace devs_out_of_bounds {

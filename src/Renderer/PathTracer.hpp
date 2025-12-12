@@ -3,11 +3,13 @@
 #include <src/Scene/Scene.hpp>
 
 namespace devs_out_of_bounds {
+
 struct PathTracerParameters {
-    int max_light_bounces = 1;
+    int max_light_bounces = 0; 
     bool b_gt7_tonemapper = false;
     bool b_accumulate = false;
 };
+
 class PathTracer : NoCopy, NoMove {
 public:
     PathTracer();
@@ -18,26 +20,37 @@ public:
 
     DOOB_NODISCARD Pixel Evaluate(int x, int y, uint32_t seed) const;
 
-public:
-    // Parameters
-    PathTracerParameters m_parameters = {};
 
+    uint32_t GetSamplesAccumulated() const { return m_accumulation_count; }
+
+public:
+    PathTracerParameters m_parameters = {};
 
 private:
     void RebuildAccelerationStructures();
-
     void LoadScene();
+    void BakeScene();
     void Cleanup();
 
-    DOOB_NODISCARD bool IntersectFirstActor(
-        const Ray& ray, Intersection* /*nullable*/ out_intersection, DrawableActor* /*nullable*/ out_actor) const;
-    DOOB_NODISCARD bool IntersectAnyActor(const Ray& ray) const;
-    DOOB_NODISCARD glm::vec3 ShadeActor(
-        const DrawableActor& actor, const LightInput& shading_input, const Intersection& intersection, uint32_t& seed) const;
-    DOOB_NODISCARD glm::vec3 SampleSky(const glm::vec3& R) const;
+    // --- Core Path Tracing Logic ---
+
+    // Solves the rendering equation iteratively
+    DOOB_NODISCARD glm::vec3 TracePath(Ray ray, uint32_t& seed) const;
+
+    // Calculates L_dir (Direct Light + Shadow Rays)
+    DOOB_NODISCARD void ComputeDirectLighting(const DrawableActor& hit_actor, const Intersection& hit_info,
+        const glm::vec3& view_dir, uint32_t& seed, glm::vec3& out_diffuse, glm::vec3& out_specular) const;
+
+    // Helper to interact with the Scene
+    DOOB_NODISCARD bool IntersectScene(const Ray& ray, Intersection* out_intersection, DrawableActor* out_actor) const;
+
+    // Returns true if a ray hits ANYTHING (for shadows)
+    DOOB_NODISCARD bool IsOccluded(const Ray& ray) const;
+
+    DOOB_NODISCARD glm::vec3 SampleSky(const glm::vec3& direction) const;
 
 private:
-    // Scene
+    // Scene Data
     ActorId m_plane_actor;
     ActorId m_light_actor;
 
@@ -46,16 +59,14 @@ private:
 
     Scene* m_scene = nullptr;
 
-private:
+    // Accumulator
     mutable std::vector<glm::dvec3> m_accumulator = {};
     mutable uint32_t m_accumulation_count = 1;
 
-private:
     // Camera
     glm::vec2 m_inv_width_height = { 1.0f, 1.0f };
     int m_width = 1;
     float m_ar = 1.0f;
-
     Camera m_camera = {};
 };
 } // namespace devs_out_of_bounds

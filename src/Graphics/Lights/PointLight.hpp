@@ -39,7 +39,7 @@ public:
 
         const float spec = glm::pow(NdH, shading.specular_power);
 
-        glm::vec3 attenuated = attenuation * m_intensity;
+        glm::vec3 attenuated = glm::max(glm::dot(input.N, L), 0.0f) * attenuation * m_intensity;
         return {
             .diffuse = attenuated,
             .specular = attenuated * spec,

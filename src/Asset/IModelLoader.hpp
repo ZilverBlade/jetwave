@@ -17,7 +17,7 @@ namespace devs_out_of_bounds {
         const uint32_t imageIndex = {};
     };
 
-    enum struct Filter : u16 {
+    enum struct Filter : uint16_t {
         Nearest,
         Linear,
         NearestMipMapNearest,

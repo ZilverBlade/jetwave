@@ -11,7 +11,6 @@ enum struct BlendMode : uint8_t {
 };
 class GltfMaterial : public IMaterial {
 public:
-    GltfMaterial() {}
 
     DOOB_NODISCARD MaterialOutput Evaluate(const Fragment& input) const override {
         using namespace glm;
@@ -45,7 +44,7 @@ public:
             if (metallic_roughness_texture) {
                 vec2 res = sampler_state->Sample(metallic_roughness_texture, input.uv);
                 metal *= res.r;
-                rough *= res.b;
+                rough *= res.g;
             }
             if (emissive_texture) {
                 vec3 res = sampler_state->Sample(emissive_texture, input.uv);
@@ -91,7 +90,7 @@ public:
     ISamplerState* sampler_state = {};
 
     ITextureView* base_color_texture = {};
-    glm::vec4 base_color_factor = { 1, 1, 1 };
+    glm::vec4 base_color_factor = { 1, 1, 1, 1 };
 
     ITextureView* metallic_roughness_texture = {};
     float metallic_factor = 1.0f;
