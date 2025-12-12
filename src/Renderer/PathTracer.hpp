@@ -61,6 +61,7 @@ private:
     // Scene Data
     ActorId m_plane_actor;
     ActorId m_light_actor;
+    ActorId m_sunlight;
 
     std::vector<DrawableActor> m_drawable_actors = {};
     std::vector<LightActor> m_light_actors = {};

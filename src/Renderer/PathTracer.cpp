@@ -2,6 +2,7 @@
 #include "Tonemapping.hpp"
 #include <random>
 #include <src/Graphics/Lights/AreaLight.hpp>
+#include <src/Graphics/Lights/DirectionalLight.hpp>
 #include <src/Graphics/Lights/PointLight.hpp>
 #include <src/Graphics/Materials/BasicMaterial.hpp>
 #include <src/Graphics/Materials/GltfMaterial.hpp>
@@ -78,8 +79,13 @@ void PathTracer::OnUpdate(float frame_time) {
 
         glm::vec3 camera_move = {};
 
-        glm::vec3 forward = { -sin(m_camera_yaw), sin(m_camera_pitch), cos(m_camera_yaw) };
-        glm::vec3 right = { cos(m_camera_yaw), 0.0f, sin(m_camera_yaw) };
+        float cos_pitch = cos(m_camera_pitch);
+        float sin_pitch = sin(m_camera_pitch);
+        float cos_yaw = cos(m_camera_yaw);
+        float sin_yaw = sin(m_camera_yaw);
+
+        glm::vec3 forward = { -sin_yaw * cos_pitch, sin_pitch, cos_yaw * cos_pitch };
+        glm::vec3 right = { cos_yaw, 0.0f, sin_yaw };
         glm::vec3 up = { 0, 1, 0 };
 
         if (state[SDL_SCANCODE_W]) {
@@ -123,7 +129,7 @@ void PathTracer::OnUpdate(float frame_time) {
             b_moved_camera = true;
             m_camera_pitch -= frame_time;
         }
-        m_camera_pitch = std::clamp(m_camera_pitch, -glm::half_pi<float>() + 0.1f, glm::half_pi<float>() - 0.1f);
+        m_camera_pitch = std::clamp(m_camera_pitch, -glm::half_pi<float>() + 0.001f, glm::half_pi<float>() - 0.001f);
 
         if (b_moved_camera) {
             ResetAccumulator();
@@ -261,9 +267,7 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
             next_dir = glm::reflect(-V, N);
             throughput *= mat.specular_color;
         } else {
-            glm::vec3 random_dir = glm::normalize(glm::vec3(RandomFloatAdv(seed) * 2.0f - 1.0f,
-                RandomFloatAdv(seed) * 2.0f - 1.0f, RandomFloatAdv(seed) * 2.0f - 1.0f));
-            next_dir = glm::normalize(N + random_dir);
+            next_dir = RandomHemiAdv(N, seed);
             throughput *= mat.albedo_color;
         }
 
@@ -348,10 +352,6 @@ bool PathTracer::IsOccluded(const Ray& ray) const {
 }
 
 glm::vec3 PathTracer::SampleSky(const glm::vec3& direction) const {
-    //static glm::vec3 ambient_color = { 0.51f, 0.53f, 0.54f };
-    //float t = 0.5f * (direction.y + 1.0f);
-    //return (1.0f - t) * glm::vec3(1.0f) + t * glm::vec3(0.5f, 0.7f, 1.0f) * 0.5f;
-
     return m_skybox_sampler.SampleCube(&m_skybox_texture, direction);
 }
 
@@ -367,19 +367,20 @@ void PathTracer::LoadScene() {
     ActorId sphere_actor = m_scene->NewDrawableActor(&sphere1, &g_cookie_mat);
     ActorId sphere_actor_back = m_scene->NewDrawableActor(&sphere1_back, &g_cookie_mat);
 
-    static Triangle triangle1 = Triangle({ 0, 0, 3 }, { 0, 3, 3 }, { 1, 1, 4 });
-
     std::vector<glm::vec3> light_colors{ { 1.f, 1.f, 1.f }, { 1.f, .1f, .1f }, { .1f, .1f, 1.f }, { .1f, 1.f, .1f },
         { 1.f, 1.f, .1f }, { .1f, 1.f, 1.f } };
     g_point_lights.clear();
     g_point_lights.reserve(light_colors.size());
     for (int i = 0; i < light_colors.size(); ++i) {
-        g_point_lights.push_back(PointLight({ 0, 10, 0 }, light_colors[i] * 50.0f));
+        g_point_lights.push_back(PointLight({ 0, 10, 0 }, light_colors[i] * 150.0f));
         m_light_actor = m_scene->NewLightActor(&g_point_lights.back());
     }
 
-    // static AreaLight area_light1 = AreaLight({ 0, 4.0f, 8 }, { 1, 2 }, { 150, 150, 150 });
-    // ActorId light_actor1 = m_scene->NewLightActor(&area_light1);
+    static AreaLight area_light1 = AreaLight({ 0, 4.0f, 8 }, { 1, 2 }, { 150, 150, 150 });
+    ActorId light_actor1 = m_scene->NewLightActor(&area_light1);
+
+    static DirectionalLight sun_light1 = DirectionalLight({ -1.0f, -1.0f, -1.0f }, { 50, 50, 50 }, 2.00f /*0.26f*/);
+    m_sunlight = m_scene->NewLightActor(&sun_light1);
 }
 void PathTracer::BakeScene() {
     m_drawable_actors.clear();

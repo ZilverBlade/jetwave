@@ -3,25 +3,18 @@
 #include <src/Graphics/Random.hpp>
 
 namespace devs_out_of_bounds {
-class AreaLight : public ILight {
+class DirectionalLight : public ILight {
 public:
-    AreaLight(const glm::vec3& center, const glm::vec2& extent, const glm::vec3& intensity)
-        : m_center(center), m_extent(extent), m_intensity(intensity) {}
+    DirectionalLight(const glm::vec3 direction, const glm::vec3& intensity, float src_angle_deg = 2.0f)
+        : m_direction(glm::normalize(direction)), m_intensity(intensity),
+          m_src_cos_angle(glm::cos(glm::radians(src_angle_deg))) {}
 
     DOOB_NODISCARD LightOutput Evaluate(const LightInput& input, const ShadingInput& shading, uint32_t& seed,
         const ShadowingInput& shadowing) const override {
 
-        static constexpr glm::vec3 RIGHT = { 1, 0, 0 };
-        static constexpr glm::vec3 FORWARD = { 0, 0, 1 };
+        RandomStateAdvance(seed);
 
-        const float offx = m_extent.x * (2.0f * RandomFloatAdv(seed) - 1.0f);
-        const float offy = m_extent.y * (2.0f * RandomFloatAdv(seed) - 1.0f);
-        glm::vec3 light = m_center + RIGHT * offx + FORWARD * offy;
-
-        const glm::vec3 fragToLight = light - input.P;
-        float distSq = glm::dot(fragToLight, fragToLight);
-        const float dist = glm::sqrt(distSq);
-        glm::vec3 L = fragToLight / dist;
+        glm::vec3 L = RandomCone(-m_direction, m_src_cos_angle, seed);
 
         if (shadowing.fn_shadow_check) {
             bool visibility = shadowing.fn_shadow_check(
@@ -29,7 +22,6 @@ public:
                     .origin = input.P,
                     .t_min = 0.001f,
                     .direction = L,
-                    .t_max = dist,
                 },
                 shadowing.userdata);
             if (!visibility) {
@@ -37,23 +29,20 @@ public:
             }
         }
 
-        const float attenuation = 1.0f / distSq * glm::max(glm::dot(input.N, -L), 0.0f) * m_extent.x * m_extent.y;
-
         const glm::vec3 H = glm::normalize(L + input.V);
         const float NdH = glm::max(glm::dot(input.N, H), 0.0f);
 
         const float spec = glm::pow(NdH, shading.specular_power);
 
-        glm::vec3 attenuated = attenuation * m_intensity;
+        glm::vec3 attenuated = glm::max(glm::dot(input.N, L), 0.0f) * m_intensity;
         return {
             .diffuse = attenuated,
             .specular = attenuated * spec,
         };
     }
 
-    glm::vec3 m_center;
-    glm::vec3 m_normal;
-    glm::vec2 m_extent;
+    glm::vec3 m_direction;
     glm::vec3 m_intensity;
+    float m_src_cos_angle = 1.0f;
 };
 } // namespace devs_out_of_bounds
