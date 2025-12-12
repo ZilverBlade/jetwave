@@ -3,7 +3,7 @@
 
 namespace devs_out_of_bounds {
 class Rg8TextureView : public ITextureView {
-    constexpr int PIXEL_STRIDE = 2;
+    static constexpr int PIXEL_STRIDE = 2;
 
 public:
     Rg8TextureView(const uint8_t* pixels, uint32_t width, uint32_t height, uint32_t pitch)

@@ -4,7 +4,8 @@
 namespace devs_out_of_bounds {
 class Sphere : public IShape {
 public:
-    Sphere(const glm::vec3& center, float radius) : m_center(center), m_radius2(radius * radius) {}
+    Sphere(const glm::vec3& center, float radius, bool b_front_facing)
+        : m_center(center), m_radius2(radius * radius), b_front_facing(b_front_facing ? 1 : 0) {}
 
     DOOB_NODISCARD bool Intersect(const Ray& ray, Intersection* out_intersection) const override {
         const glm::vec3 oc = ray.origin - m_center;
@@ -19,17 +20,15 @@ public:
             return false;
         }
         float sqrt_disc = glm::sqrt(discriminant);
-        float t = (-b - sqrt_disc) * 0.5f;
-        bool front_facing = true;
+        float t;
+        if (b_front_facing == 1) {
+            t = (-b - sqrt_disc) * 0.5f;
+        } else {
+            t = (-b + sqrt_disc) * 0.5f;
+        }
         // If t0 is invalid (behind us or too far), try t1 (the exit point)
         if (t < ray.t_min || t > ray.t_max) {
-            t = (-b + sqrt_disc) * 0.5f;
-
-            // If t1 is ALSO invalid, then we truly missed (or are entirely behind/past it)
-            if (t < ray.t_min || t > ray.t_max) {
-                return false;
-            }
-            front_facing = true;
+            return false;
         }
 
         if (out_intersection) {
@@ -38,8 +37,8 @@ public:
             out_intersection->t = t;
             out_intersection->barycentric = { 0.0f, 0.0f }; // Spheres don't use barycentrics
             out_intersection->primitive = 0;
-            out_intersection->flat_normal = glm::normalize(oc + target);
-            out_intersection->b_front_facing = front_facing ? 1 : 0;
+            out_intersection->flat_normal = glm::normalize(oc + target) * (b_front_facing == 1 ? 1.f : -1.f);
+            out_intersection->b_front_facing = b_front_facing;
         }
 
         return true;
@@ -63,5 +62,6 @@ public:
 
     glm::vec3 m_center;
     float m_radius2;
+    uint32_t b_front_facing = 1;
 };
 } // namespace devs_out_of_bounds

@@ -13,6 +13,7 @@
 #include <src/Graphics/Shapes/Triangle.hpp>
 
 #include <SDL3/SDL.h>
+#include <stb_image.h>
 
 namespace devs_out_of_bounds {
 
@@ -26,6 +27,27 @@ constexpr float CAMERA_FOV_DEG = 90.0f;
 
 PathTracer::PathTracer() {
     m_scene = new Scene();
+    {
+        int x, y, c;
+        float* data = stbi_loadf("assets/citrus_orchard_road_puresky_2k.hdr", &x, &y, &c, 3);
+
+        m_skybox_texture_data = new uint8_t[x * y * 4];
+        for (int i = 0; i < x * y; ++i) {
+            float* src_ptr = data + i * c;
+            uint8_t* dst_ptr = m_skybox_texture_data + i * 4;
+
+            float r = src_ptr[0];
+            float g = src_ptr[1];
+            float b = src_ptr[2];
+
+            *reinterpret_cast<uint32_t*>(dst_ptr) = glm::packF3x9_E1x5({ r, g, b });
+        }
+
+        m_skybox_texture = Rgbe9TextureView(m_skybox_texture_data, x, y, x * 4);
+
+        stbi_image_free(data);
+    }
+
     LoadScene();
     BakeScene();
 }
@@ -33,6 +55,7 @@ PathTracer::PathTracer() {
 PathTracer::~PathTracer() {
     Cleanup();
     delete m_scene;
+    delete[] m_skybox_texture_data;
 }
 
 void PathTracer::OnResize(int new_width, int new_height) {
@@ -325,9 +348,11 @@ bool PathTracer::IsOccluded(const Ray& ray) const {
 }
 
 glm::vec3 PathTracer::SampleSky(const glm::vec3& direction) const {
-    static glm::vec3 ambient_color = { 0.51f, 0.53f, 0.54f };
-    float t = 0.5f * (direction.y + 1.0f);
-    return (1.0f - t) * glm::vec3(1.0f) + t * glm::vec3(0.5f, 0.7f, 1.0f) * 0.5f;
+    //static glm::vec3 ambient_color = { 0.51f, 0.53f, 0.54f };
+    //float t = 0.5f * (direction.y + 1.0f);
+    //return (1.0f - t) * glm::vec3(1.0f) + t * glm::vec3(0.5f, 0.7f, 1.0f) * 0.5f;
+
+    return m_skybox_sampler.SampleCube(&m_skybox_texture, direction);
 }
 
 void PathTracer::RebuildAccelerationStructures() {}
@@ -337,8 +362,10 @@ void PathTracer::LoadScene() {
     static Plane plane1 = Plane({ 0, 1, 0 }, { 0, -1, 0 });
     m_plane_actor = m_scene->NewDrawableActor(&plane1, &g_grid_mat);
 
-    static Sphere sphere1 = Sphere({ 0.0f, 0.0f, 5.0f }, 1.0f);
+    static Sphere sphere1 = Sphere({ 0.0f, 0.0f, 5.0f }, 1.0f, true);
+    static Sphere sphere1_back = Sphere({ 0.0f, 0.0f, 5.0f }, 1.0f, false);
     ActorId sphere_actor = m_scene->NewDrawableActor(&sphere1, &g_cookie_mat);
+    ActorId sphere_actor_back = m_scene->NewDrawableActor(&sphere1_back, &g_cookie_mat);
 
     static Triangle triangle1 = Triangle({ 0, 0, 3 }, { 0, 3, 3 }, { 1, 1, 4 });
 
@@ -351,8 +378,8 @@ void PathTracer::LoadScene() {
         m_light_actor = m_scene->NewLightActor(&g_point_lights.back());
     }
 
-    static AreaLight area_light1 = AreaLight({ 0, 4.0f, 8 }, { 1, 2 }, { 150, 150, 150 });
-    ActorId light_actor1 = m_scene->NewLightActor(&area_light1);
+    // static AreaLight area_light1 = AreaLight({ 0, 4.0f, 8 }, { 1, 2 }, { 150, 150, 150 });
+    // ActorId light_actor1 = m_scene->NewLightActor(&area_light1);
 }
 void PathTracer::BakeScene() {
     m_drawable_actors.clear();
