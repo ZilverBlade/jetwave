@@ -6,5 +6,6 @@ struct Fragment {
     glm::vec3 normal = {};
     glm::vec3 tangent = {};
     glm::vec2 uv = {};
+    bool b_front_face = false;
 };
 } // namespace devs_out_of_bounds

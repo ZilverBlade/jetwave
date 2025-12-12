@@ -150,8 +150,13 @@ using Pixel = uint32_t;
 #define DOOB_WRITE_PIXEL(r, g, b, a)                                                                                   \
     Pixel(((static_cast<uint32_t>(r) & 0xFFU) << 24) | ((static_cast<uint32_t>(g) & 0xFFU) << 16) |                    \
           ((static_cast<uint32_t>(b) & 0xFFU) << 8) | (static_cast<uint32_t>(a)) & 0xFFU)
+#define DOOB_READ_PIXEL_R(p) static_cast<uint32_t>(((p) >> 24) & 0xFFU)
+#define DOOB_READ_PIXEL_G(p) static_cast<uint32_t>(((p) >> 16) & 0xFFU)
+#define DOOB_READ_PIXEL_B(p) static_cast<uint32_t>(((p) >> 8) & 0xFFU)
+#define DOOB_READ_PIXEL_A(p) static_cast<uint32_t>(((p)) & 0xFFU)
 
 #define DOOB_WRITE_PIXEL_F32(r, g, b, a) DOOB_WRITE_PIXEL((r) * 255.0f, (g) * 255.0f, (b) * 255.0f, (a) * 255.0f)
+
 
 #define DOOB_MAKE_ENUM_FLAGS(Enum, Int)                                                                                \
     static Enum operator|(Enum lhs, Enum rhs) {                                                                        \

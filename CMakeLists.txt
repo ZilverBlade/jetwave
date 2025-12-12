@@ -39,9 +39,14 @@ endif()
 
 target_link_libraries(xwave PRIVATE
     glm::glm-header-only
+    fastgltf::fastgltf
     SDL3::SDL3-shared
 )
 
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+    DESTINATION "${CMAKE_BINARY_DIR}/bin")
+         
+message(STATUS "Copied assets to ${CMAKE_BINARY_DIR}/assets")
 
 target_include_directories(xwave PRIVATE
     ${STB_IMAGE_DIR}

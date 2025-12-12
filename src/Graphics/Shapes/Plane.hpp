@@ -26,6 +26,7 @@ public:
             out_intersection->flat_normal = m_normal;
             out_intersection->barycentric = { 0.0f, 0.0f };
             out_intersection->primitive = 0;
+            out_intersection->b_front_facing = 1;
         }
         return true;
     }

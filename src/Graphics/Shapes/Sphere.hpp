@@ -18,18 +18,18 @@ public:
         if (discriminant < 0.0f) {
             return false;
         }
-
-        float t = (-b - glm::sqrt(discriminant)) * 0.5f;
-
+        float sqrt_disc = glm::sqrt(discriminant);
+        float t = (-b - sqrt_disc) * 0.5f;
+        bool front_facing = true;
         // If t0 is invalid (behind us or too far), try t1 (the exit point)
         if (t < ray.t_min || t > ray.t_max) {
-            t = (-b + glm::sqrt(discriminant)) * 0.5f;
+            t = (-b + sqrt_disc) * 0.5f;
 
             // If t1 is ALSO invalid, then we truly missed (or are entirely behind/past it)
             if (t < ray.t_min || t > ray.t_max) {
                 return false;
             }
-            return false;
+            front_facing = true;
         }
 
         if (out_intersection) {
@@ -39,6 +39,7 @@ public:
             out_intersection->barycentric = { 0.0f, 0.0f }; // Spheres don't use barycentrics
             out_intersection->primitive = 0;
             out_intersection->flat_normal = glm::normalize(oc + target);
+            out_intersection->b_front_facing = front_facing ? 1 : 0;
         }
 
         return true;

@@ -5,11 +5,13 @@
 
 namespace devs_out_of_bounds {
 struct MaterialOutput {
+    bool b_discard = false;
     glm::vec3 world_normal = {};
     glm::vec3 albedo_color = {};
     glm::vec3 specular_color = {};
     float specular_power = {};
     glm::vec3 emission_color = {};
+    float opacity = 1.0f;
 };
 struct IMaterial {
     IMaterial() = default;

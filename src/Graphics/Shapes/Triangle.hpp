@@ -50,6 +50,7 @@ public:
             out_intersection->primitive = 0;
 
             out_intersection->flat_normal = glm::normalize(glm::cross(edge1, edge2));
+            out_intersection->b_front_facing = 1;
         }
     }
 
