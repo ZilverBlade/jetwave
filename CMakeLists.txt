@@ -45,6 +45,7 @@ target_link_libraries(xwave PRIVATE
     glm::glm-header-only
     fastgltf::fastgltf
     SDL3::SDL3-shared
+    nlohmann_json::nlohmann_json
 )
 
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/assets"

@@ -5,49 +5,25 @@
 #include <src/Graphics/Lights/DirectionalLight.hpp>
 #include <src/Graphics/Lights/PointLight.hpp>
 #include <src/Graphics/Materials/BasicMaterial.hpp>
-#include <src/Graphics/Materials/GltfMaterial.hpp>
 #include <src/Graphics/Materials/GridCutoutMaterial.hpp>
 #include <src/Graphics/Materials/GridMaterial.hpp>
-#include <src/Graphics/Materials/TriangleDebugMaterial.hpp>
 #include <src/Graphics/Shapes/Plane.hpp>
 #include <src/Graphics/Shapes/Sphere.hpp>
 #include <src/Graphics/Shapes/Triangle.hpp>
 
 #include <SDL3/SDL.h>
-#include <stb_image.h>
 
 namespace devs_out_of_bounds {
 
-static BasicMaterial g_default_mat = BasicMaterial({ 1.0f, 1.0f, 1.0f }, { 1, 1, 1 }, 64.0f);
-static TriangleDebugMaterial g_debug_mat = TriangleDebugMaterial();
-static GridMaterial g_grid_mat = GridMaterial();
-static GridCutoutMaterial g_cookie_mat = GridCutoutMaterial();
-static std::vector<PointLight> g_point_lights;
+static material::BasicMaterial g_default_mat;
+static material::GridMaterial g_grid_mat;
+static material::GridCutoutMaterial g_cookie_mat;
+static std::vector<light::PointLight> g_point_lights;
 
 constexpr float CAMERA_FOV_DEG = 90.0f;
 
 PathTracer::PathTracer() {
     m_scene = new Scene();
-    {
-        int x, y, c;
-        float* data = stbi_loadf("assets/citrus_orchard_road_puresky_2k.hdr", &x, &y, &c, 3);
-
-        m_skybox_texture_data = new uint8_t[x * y * 4];
-        for (int i = 0; i < x * y; ++i) {
-            float* src_ptr = data + i * c;
-            uint8_t* dst_ptr = m_skybox_texture_data + i * 4;
-
-            float r = src_ptr[0];
-            float g = src_ptr[1];
-            float b = src_ptr[2];
-
-            *reinterpret_cast<uint32_t*>(dst_ptr) = glm::packF3x9_E1x5({ r, g, b });
-        }
-
-        m_skybox_texture = Rgbe9TextureView(m_skybox_texture_data, x, y, x * 4);
-
-        stbi_image_free(data);
-    }
 
     LoadScene();
     BakeScene();
@@ -56,7 +32,6 @@ PathTracer::PathTracer() {
 PathTracer::~PathTracer() {
     Cleanup();
     delete m_scene;
-    delete[] m_skybox_texture_data;
 }
 
 void PathTracer::OnResize(int new_width, int new_height) {
@@ -142,10 +117,10 @@ void PathTracer::OnUpdate(float frame_time) {
 
 
         if (state[SDL_SCANCODE_MINUS]) {
-            m_parameters.m_log_camera_exposure -= 4.0f * frame_time;
+            m_parameters.assets.camera.SetLogExposure(m_parameters.assets.camera.GetLogExposure() - 4.0f * frame_time);
         }
         if (state[SDL_SCANCODE_EQUALS]) {
-            m_parameters.m_log_camera_exposure += 4.0f * frame_time;
+            m_parameters.assets.camera.SetLogExposure(m_parameters.assets.camera.GetLogExposure() + 4.0f * frame_time);
         }
     }
 
@@ -188,7 +163,7 @@ Pixel PathTracer::Evaluate(int x, int y, uint32_t& seed) const {
     }
 
     glm::vec3 color_avg = static_cast<glm::vec3>(summed / static_cast<double>(m_accumulation_count));
-    glm::vec3 hdr = color_avg * expf(m_parameters.m_log_camera_exposure);
+    glm::vec3 hdr = color_avg * m_parameters.assets.camera.ComputeExposureFactor();
 
     if (m_parameters.b_gt7_tonemapper) {
         GT7ToneMapping TM;
@@ -231,67 +206,58 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
             radiance += throughput * SampleSky(ray.direction);
             break;
         }
-
-        glm::vec3 P = hit.t * ray.direction + ray.origin;
-        glm::vec3 V = glm::normalize(ray.origin - P);
+        glm::vec3 V = -ray.direction; // Outgoing view direction
 
         Fragment frag = actor.shape->SampleFragment(hit);
-        MaterialOutput mat = actor.material->Evaluate(frag);
-        glm::vec3 N = mat.world_normal;
+        glm::vec3 Lr = {};
+        glm::vec3 Le = {};
+        // avoid excessive heap allocations
+        thread_local static BSDF bsdf;
+        bsdf.Reset();
+        bool visible = actor.material->Evaluate(frag, &bsdf, &Le);
+        assert(visible);
+        if (bsdf.HasBxDF()) {
+            Lr = ComputeDirectLighting(actor, hit, V, seed, &bsdf);
+        }
+        radiance += throughput * (Lr + Le);
 
-        glm::vec3 P_offset = P + (hit.flat_normal * 0.001f);
+        float pdf = 0.0f;
+        glm::vec3 wi;
+        glm::vec3 f = bsdf.Sample_Evaluate(V, wi, seed, pdf);
 
-        glm::vec3 diffuse_light = {};
-        glm::vec3 specular_light = {};
+        if (pdf < FLT_EPSILON || glm::all(glm::lessThan(f, glm::vec3(FLT_EPSILON))) || glm::any(glm::isnan(f))) {
+            break;
+        }
+        throughput *= f / pdf;
 
-        ComputeDirectLighting(actor, hit, V, seed, diffuse_light, specular_light);
-
-        float fresnel = glm::max(glm::dot(V, N), 0.0f);
-
-        radiance += throughput * (diffuse_light + specular_light);
+        // Update Ray
+        ray.origin = hit.position + (hit.flat_normal * 0.001f);
+        ray.direction = wi;
 
         // If we reached max bounces, stop here.
         if (bounce == m_parameters.max_light_bounces)
             break;
 
-
-        glm::vec3 next_dir;
-        bool is_specular_bounce = RandomFloatAdv<UniformDistribution>(seed) < (fresnel * 0.5f);
-
-        if (is_specular_bounce) {
-            // Specular Reflection
-            next_dir = glm::reflect(-V, N);
-            throughput *= mat.specular_color;
-        } else {
-            next_dir = RandomHemiAdv<UniformDistribution>(N, seed);
-            throughput *= mat.albedo_color;
+        // russian roulette termination
+        if (bounce > 3) {
+            float p = std::max(throughput.x, std::max(throughput.y, throughput.z));
+            if (RandomFloatAdv<UniformDistribution>(seed) > p)
+                break;
+            throughput /= p; // MUST divide by survival probability to keep energy correct!
         }
-
-        // Update Ray for next iteration
-        ray.origin = P_offset;
-        ray.direction = next_dir;
     }
 
     return radiance;
 }
-
-void PathTracer::ComputeDirectLighting(const DrawableActor& actor, const Intersection& hit, const glm::vec3& V,
-    uint32_t& seed, glm::vec3& out_diffuse, glm::vec3& out_specular) const {
-    out_diffuse = {};
-    out_specular = {};
-
-    // Recalculate basic properties needed for light evaluation
-    Fragment fragment = actor.shape->SampleFragment(hit);
-    MaterialOutput material = actor.material->Evaluate(fragment);
-
-    const glm::vec3 P = hit.position;
-    const glm::vec3 eye = P + V;
-    const glm::vec3 N = material.world_normal;
+glm::vec3 PathTracer::ComputeDirectLighting(
+    const DrawableActor& actor, const Intersection& hit, const glm::vec3& V, uint32_t& seed, BSDF* bsdf) const {
+    glm::vec3 Ld(0.0f);
+    glm::vec3 P = hit.position + (hit.flat_normal * 0.001f); // Shadow bias offset
 
     for (const auto& light_actor : m_light_actors) {
-        LightSample sample = light_actor.light->Sample(hit.position, seed);
-        if (this->IsOccluded({
-                .origin = P + hit.flat_normal * 0.0001f,
+        LightSample sample = light_actor.light->Sample(P, seed);
+        if (IsOccluded({
+                .origin = P,
                 .t_min = 0.001f,
                 .direction = sample.L,
                 .t_max = sample.dist,
@@ -299,39 +265,41 @@ void PathTracer::ComputeDirectLighting(const DrawableActor& actor, const Interse
             continue;
         }
 
-        const glm::vec3 H = glm::normalize(sample.L + V);
-        const float NdH = glm::max(glm::dot(N, H), 0.0f);
-
-        const float spec = glm::pow(NdH, material.specular_power);
-
-        out_diffuse += NdH * sample.Li;
-        out_specular += NdH * spec;
+        Ld += sample.Li * bsdf->Evaluate(V, glm::normalize(sample.L + V), sample.L);
     }
-
-    out_diffuse *= material.albedo_color;
-    out_specular *= material.specular_color;
+    return Ld;
 }
-
-bool PathTracer::IntersectScene(const Ray& ray, Intersection* out_intersection, DrawableActor* out_actor) const {
-    Intersection closest_hit{ .t = INFINITY };
+bool PathTracer::IntersectScene(Ray ray, Intersection* out_intersection, DrawableActor* out_actor) const {
+    Intersection closest_hit = { .t = INFINITY };
     DrawableActor closest_actor;
-    bool hit_something = false;
+    bool b_retry_query_scene = false;
+    bool b_hit_something = false;
 
-    for (const auto& actor : m_drawable_actors) {
-        Intersection curr_intersection;
-        if (actor.shape->Intersect(ray, &curr_intersection)) {
-            if (actor.material->EvaluateDiscard(actor.shape->SampleFragment(curr_intersection))) {
+    do {
+        b_retry_query_scene = false;
+        for (const auto& actor : m_drawable_actors) {
+            Intersection curr_intersection;
+            if (!actor.shape->Intersect(ray, &curr_intersection)) {
                 continue;
             }
-            if (curr_intersection.t < closest_hit.t) {
+            if (curr_intersection.t >= closest_hit.t) {
+                continue;
+            }
+            if (!actor.material->IsOpaque() &&
+                !actor.material->Evaluate(actor.shape->SampleFragment(curr_intersection), nullptr, nullptr)) {
+                b_retry_query_scene = true;
+                ray.t_min = curr_intersection.t + 1e-6;
+                closest_hit = { .t = INFINITY };
+                break;
+            } else {
                 closest_hit = curr_intersection;
                 closest_actor = actor;
-                hit_something = true;
+                b_hit_something = true;
             }
         }
-    }
+    } while (b_retry_query_scene);
 
-    if (hit_something) {
+    if (b_hit_something) {
         if (out_intersection)
             *out_intersection = closest_hit;
         if (out_actor)
@@ -340,51 +308,69 @@ bool PathTracer::IntersectScene(const Ray& ray, Intersection* out_intersection, 
     }
     return false;
 }
+bool PathTracer::IsOccluded(Ray ray) const {
+    constexpr int MAX_ALPHA_LAYERS = 64;
 
-bool PathTracer::IsOccluded(const Ray& ray) const {
-    for (const auto& actor : m_drawable_actors) {
-        Intersection intersection;
-        if (actor.shape->Intersect(ray, &intersection)) {
-            if (actor.material->EvaluateDiscard(actor.shape->SampleFragment(intersection))) {
+    for (int layer = 0; layer < MAX_ALPHA_LAYERS; ++layer) {
+        Intersection closest_hit = { .t = INFINITY };
+        DrawableActor closest_actor = {};
+        bool b_hit_something = false;
+
+        for (const auto& actor : m_drawable_actors) {
+            Intersection curr_hit;
+
+            if (actor.shape->Intersect(ray, &curr_hit)) {
+                if (curr_hit.t < closest_hit.t) {
+                    closest_hit = curr_hit;
+                    closest_actor = actor;
+                    b_hit_something = true;
+                }
+            }
+        }
+
+        if (b_hit_something) {
+            if (closest_actor.material->IsOpaque()) {
+                return true;
+            }
+
+            bool b_visible =
+                closest_actor.material->Evaluate(closest_actor.shape->SampleFragment(closest_hit), nullptr, nullptr);
+
+            if (b_visible) {
+                return true;
+            } else {
+                // In case it's a "Hole":
+                // Advance the ray start point JUST past this hit and try again.
+                // We use a relative epsilon to handle large distances safely.
+                float epsilon = std::max(1e-4f, closest_hit.t * 1e-5f);
+                ray.t_min = closest_hit.t + epsilon;
+
+                // CONTINUE the 'layer' loop to find the next hit
                 continue;
             }
-            return true;
+        } else {
+            // No more hits -> Light is visible
+            return false;
         }
     }
-    return false;
+
+    // If we exceeded max layers, assume occluded (fail safe)
+    return true;
 }
 
 glm::vec3 PathTracer::SampleSky(const glm::vec3& direction) const {
-    return m_skybox_sampler.SampleCube(&m_skybox_texture, direction);
+    if (m_parameters.assets.sky.skybox_texture) {
+        return m_parameters.assets.sky.lux *
+               m_skybox_sampler.SampleCube(m_parameters.assets.sky.skybox_texture, direction);
+    } else {
+        return {};
+    }
 }
 
 void PathTracer::RebuildAccelerationStructures() {}
-void PathTracer::Cleanup() {}
+void PathTracer::Cleanup() { m_parameters.assets.Clear(); }
 
-void PathTracer::LoadScene() {
-    static Plane plane1 = Plane({ 0, 1, 0 }, { 0, -1, 0 });
-    m_plane_actor = m_scene->NewDrawableActor(&plane1, &g_grid_mat);
-
-    static Sphere sphere1 = Sphere({ 0.0f, 0.0f, 5.0f }, 1.0f, true);
-    static Sphere sphere1_back = Sphere({ 0.0f, 0.0f, 5.0f }, 1.0f, false);
-    ActorId sphere_actor = m_scene->NewDrawableActor(&sphere1, &g_cookie_mat);
-    ActorId sphere_actor_back = m_scene->NewDrawableActor(&sphere1_back, &g_cookie_mat);
-
-    std::vector<glm::vec3> light_colors{ { 1.f, 1.f, 1.f }, { 1.f, .1f, .1f }, { .1f, .1f, 1.f }, { .1f, 1.f, .1f },
-        { 1.f, 1.f, .1f }, { .1f, 1.f, 1.f } };
-    g_point_lights.clear();
-    g_point_lights.reserve(light_colors.size());
-    for (int i = 0; i < light_colors.size(); ++i) {
-        g_point_lights.push_back(PointLight({ 0, 10, 0 }, light_colors[i] * 150.0f));
-        m_light_actor = m_scene->NewLightActor(&g_point_lights.back());
-    }
-
-    static AreaLight area_light1 = AreaLight({ 0, 4.0f, 8 }, { 1, 2 }, { 150, 150, 150 });
-    ActorId light_actor1 = m_scene->NewLightActor(&area_light1);
-
-    static DirectionalLight sun_light1 = DirectionalLight({ -1.0f, -1.0f, -1.0f }, { 50, 50, 50 }, 2.00f /*0.26f*/);
-    m_sunlight = m_scene->NewLightActor(&sun_light1);
-}
+void PathTracer::LoadScene() { SceneLoader::Load("assets/test-scene.json", *m_scene, m_parameters.assets); }
 void PathTracer::BakeScene() {
     m_drawable_actors.clear();
     m_light_actors.clear();

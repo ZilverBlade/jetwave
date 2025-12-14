@@ -7,3 +7,7 @@
 [submodule "vendor/fastgltf"]
 	path = vendor/fastgltf
 	url = https://github.com/spnda/fastgltf.git
+[submodule "vendor/json"]
+	path = vendor/json
+	url = https://github.com/nlohmann/json.git
+	

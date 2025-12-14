@@ -1,0 +1,102 @@
+{
+  "camera": {
+	"position": [0.0, 2.0, -9.0], 
+	"direction": [0.0, 0.0, 1.0],
+	
+	"fieldOfView": 70.0,
+	"aperture": 16.0,
+    "invShutterSpeed": 60,
+    "iso": 100.0,
+	"logExposure": 0.0
+  },
+  "sky": { 
+    "skybox": "assets/citrus_orchard_road_puresky_2k.hdr",
+	"lux": 30000.0
+  },
+  "materials": [
+    {
+      "name": "default",
+      "type": "basic",
+	  "parameters": {
+	  }
+    },
+    {
+      "name": "glow",
+      "type": "emissive",
+	  "parameters": {
+		"color": [1,1,1],
+		"lumens": 1000000.0
+	  }
+    },
+    {
+      "name": "redPlastic",
+      "type": "clearcoat",
+	  "parameters": {
+		"albedo": [1.0, 0.0, 0.0],
+		"roughness": 0.30,
+		"clearcoat": 0.90,
+		"clearcoatRoughness": 0.12
+	  }
+    },
+    {
+      "name": "",
+      "type": "clearcoat",
+	  "parameters": {
+		"albedo": [1.0, 0.0, 0.0],
+		"roughness": 0.30,
+		"clearcoat": 0.90,
+		"clearcoatRoughness": 0.02
+	  }
+    },
+    {
+      "name": "floorMat",
+      "type": "gridMaterial",
+	  "parameters": {
+		"gridSize": 1.0
+	  }
+    },
+    {
+      "name": "cookieCutter",
+      "type": "gridCutoutMaterial",
+	  "parameters": {
+		"gridSize": 1.0
+	  }
+    }
+  ],
+  "actors": [
+    {
+      "shape": "sphere",
+      "radius": 1.0,
+      "center": [0.0, 1.0, 0.0],
+      "material": "redPlastic"
+    },
+    {
+      "shape": "plane",
+      "normal": [0.0, 1.0, 0.0],
+      "position": [0.0, 0.0, 0.0],
+      "material": "default"
+    },
+    {
+      "shape": "triangle",
+      "a": [-1, 2, 0],
+      "b": [0, 3, 0],
+      "c": [1, 2, 0],
+      "material": "glow"
+    }
+  ],
+  "lights": [
+    {
+      "type": "point",
+      "position": [2.0, 5.0, 2.0],
+      "color": [1.0, 1.0, 1.0],
+	  "lumens": 1600.0
+    },
+    {
+      "type": "directional",
+      "direction": [-0.5, -1.0, -0.5],
+      "color": [1.0, 1.0, 1.0],
+      "angle": 2.0,
+	  "lux": 110000.0
+    }
+  ]
+}

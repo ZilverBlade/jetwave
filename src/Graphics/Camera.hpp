@@ -4,6 +4,7 @@
 #include <src/Graphics/Ray.hpp>
 
 namespace devs_out_of_bounds {
+
 class Camera {
 public:
     Camera() {}
@@ -37,6 +38,31 @@ public:
     DOOB_NODISCARD DOOB_FORCEINLINE glm::vec3 GetPosition() const { return m_position; }
     DOOB_FORCEINLINE void SetPosition(const glm::vec3& position) { m_position = position; }
 
+    DOOB_FORCEINLINE void SetSensor(float aperture, float inv_shutter_speed, float iso) {
+        m_aperture = aperture;
+        m_shutter_speed = 1.0f / inv_shutter_speed;
+        m_iso = iso;
+    }
+
+    DOOB_FORCEINLINE void GetSensor(float& aperture, float& inv_shutter_speed, float& iso) {
+        aperture = m_aperture;
+        inv_shutter_speed = 1.0f / m_shutter_speed;
+        iso = m_iso;
+    }
+
+    DOOB_NODISCARD DOOB_FORCEINLINE float GetLogExposure() { return m_log_exposure; }
+    DOOB_FORCEINLINE void SetLogExposure(float log_exposure) { m_log_exposure = log_exposure; }
+
+    DOOB_NODISCARD DOOB_FORCEINLINE float ComputeExposureFactor() const {
+        float ev100 = std::log2((m_aperture * m_aperture) / m_shutter_speed);
+
+        ev100 -= std::log2(m_iso / 100.0f);
+
+        float max_luminance = 1.2f * std::exp2(ev100);
+
+        return std::exp(m_log_exposure) / max_luminance;
+    }
+
 private:
     glm::vec3 m_position = { 0, 0, 0 };
 
@@ -45,5 +71,10 @@ private:
     glm::vec3 m_up = { 0, 1, 0 };
 
     float m_focal_length = 1.f;
+
+    float m_log_exposure = 0.0f;
+    float m_aperture = 16.0f;
+    float m_shutter_speed = 1.0f / 125.0f;
+    float m_iso = 100.0f;
 };
 } // namespace devs_out_of_bounds

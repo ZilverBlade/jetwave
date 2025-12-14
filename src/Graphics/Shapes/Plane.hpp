@@ -2,51 +2,53 @@
 #include <src/Graphics/IShape.hpp>
 
 namespace devs_out_of_bounds {
-class Plane : public IShape {
-public:
-    Plane(const glm::vec3& normal, const glm::vec3& position) : m_normal(normal), m_d(glm::dot(position, normal)) {}
+namespace shape {
+    class Plane : public IShape {
+    public:
+        Plane(const glm::vec3& normal, const glm::vec3& position) : m_normal(normal), m_d(glm::dot(position, normal)) {}
 
-    DOOB_NODISCARD bool Intersect(const Ray& ray, Intersection* out_intersection) const override {
-        const float cos_angle = glm::dot(ray.direction, m_normal);
+        DOOB_NODISCARD bool Intersect(const Ray& ray, Intersection* out_intersection) const override {
+            const float cos_angle = glm::dot(ray.direction, m_normal);
 
-        // enable backface culling at the same time
-        if (cos_angle >= -std::numeric_limits<float>::epsilon()) {
-            return false;
+            // enable backface culling at the same time
+            if (cos_angle >= -std::numeric_limits<float>::epsilon()) {
+                return false;
+            }
+            const float D = m_d - glm::dot(ray.origin, m_normal);
+            const float t = D / cos_angle;
+
+            // 5. Check if the intersection is behind the camera
+            if (t < ray.t_min || t > ray.t_max) {
+                return false;
+            }
+            if (out_intersection) {
+                out_intersection->position = ray.origin + ray.direction * t;
+                out_intersection->t = t;
+                out_intersection->flat_normal = m_normal;
+                out_intersection->barycentric = { 0.0f, 0.0f };
+                out_intersection->primitive = 0;
+                out_intersection->b_front_facing = 1;
+            }
+            return true;
         }
-        const float D = m_d - glm::dot(ray.origin, m_normal);
-        const float t = D / cos_angle;
-
-        // 5. Check if the intersection is behind the camera
-        if (t < ray.t_min || t > ray.t_max) {
-            return false;
+        DOOB_NODISCARD Fragment SampleFragment(const Intersection& intersection) const override {
+            return {
+                .position = intersection.position,
+                .normal = m_normal,
+                .tangent = {},
+                .uv = {},
+            };
         }
-        if (out_intersection) {
-            out_intersection->position = ray.origin + ray.direction * t;
-            out_intersection->t = t;
-            out_intersection->flat_normal = m_normal;
-            out_intersection->barycentric = { 0.0f, 0.0f };
-            out_intersection->primitive = 0;
-            out_intersection->b_front_facing = 1;
+
+        DOOB_NODISCARD AABB GetAABB() const override {
+            return AABB{
+                .min = { -INFINITY, -INFINITY, -INFINITY },
+                .max = { INFINITY, INFINITY, INFINITY },
+            };
         }
-        return true;
-    }
-    DOOB_NODISCARD Fragment SampleFragment(const Intersection& intersection) const override {
-        return {
-            .position = intersection.position,
-            .normal = m_normal,
-            .tangent = {},
-            .uv = {},
-        };
-    }
 
-    DOOB_NODISCARD AABB GetAABB() const override {
-        return AABB{
-            .min = { -INFINITY, -INFINITY, -INFINITY },
-            .max = { INFINITY, INFINITY, INFINITY },
-        };
-    }
-
-    glm::vec3 m_normal;
-    float m_d;
-};
+        glm::vec3 m_normal;
+        float m_d;
+    };
+} // namespace shape
 } // namespace devs_out_of_bounds

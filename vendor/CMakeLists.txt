@@ -7,3 +7,5 @@ set(SDL_AVX2 ON)
 add_subdirectory(SDL)
 
 add_subdirectory(fastgltf)
+
+add_subdirectory(json)

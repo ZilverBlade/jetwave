@@ -5,18 +5,25 @@
 
 namespace devs_out_of_bounds {
 namespace material {
-    class BasicMaterial : public IMaterial {
+    class ClearcoatMaterial : public IMaterial {
     public:
         bool Evaluate(const Fragment& input, BSDF* out_bsdf, glm::vec3* out_emission) const {
             if (out_bsdf) {
                 out_bsdf->Add<bxdf::DiffuseReflection>(m_albedo, input.normal);
-                out_bsdf->Add<bxdf::MicrofacetReflection>(glm::vec3(0.04f), 0.0f, input.normal);
+
+                out_bsdf->Add<bxdf::MicrofacetReflection>(glm::vec3(0.04f), m_roughness, input.normal);
+
+                out_bsdf->Add<bxdf::MicrofacetReflection>(
+                    glm::vec3(0.04f * m_clearcoat), m_clearcoat_roughness, input.normal); // 0.01 roughness
             }
             return true;
         }
         bool IsOpaque() const override { return true; }
 
         glm::vec3 m_albedo = { 1, 1, 1 };
+        float m_roughness = 0.5f;
+        float m_clearcoat = 1.0f;
+        float m_clearcoat_roughness = 0.01f;
     };
 } // namespace material
 } // namespace devs_out_of_bounds

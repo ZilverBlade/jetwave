@@ -40,7 +40,7 @@ DOOB_NODISCARD DOOB_FORCEINLINE glm::vec3 RandomHemiAdv(const glm::vec3& normal,
     return sampleLocal.x * tangent + sampleLocal.y * bitangent + sampleLocal.z * normal;
 }
 template <typename TRNG>
-DOOB_NODISCARD DOOB_FORCEINLINE glm::vec3 RandomCone(const glm::vec3& direction, float cos_theta_max, uint32_t& seed) {
+DOOB_NODISCARD DOOB_FORCEINLINE glm::vec3 RandomConeAdv(const glm::vec3& direction, float cos_theta_max, uint32_t& seed) {
     glm::vec3 side = glm::abs(direction.z) < 0.999f ? glm::vec3(0, 0, 1) : glm::vec3(1, 0, 0);
     glm::vec3 right = glm::normalize(glm::cross(side, direction));
     glm::vec3 up = glm::cross(direction, right);

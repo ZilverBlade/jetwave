@@ -2,20 +2,15 @@
 
 #include <src/Core.hpp>
 #include <src/Graphics/Fragment.hpp>
+#include <src/Graphics/BSDF.hpp>
 
 namespace devs_out_of_bounds {
-struct MaterialOutput {
-    glm::vec3 world_normal = {};
-    glm::vec3 albedo_color = {};
-    glm::vec3 specular_color = {};
-    float specular_power = {};
-    glm::vec3 emission_color = {};
-    float opacity = 1.0f;
-};
 struct IMaterial {
     IMaterial() = default;
     virtual ~IMaterial() = default;
-    DOOB_NODISCARD virtual MaterialOutput Evaluate(const Fragment& input) const = 0;
-    DOOB_NODISCARD virtual bool EvaluateDiscard(const Fragment& input) const = 0;
+    // returns true if the material is visible
+    // If the bsdf or emission is nullptr, only visibility is evaluated
+    DOOB_NODISCARD virtual bool Evaluate(const Fragment& input, BSDF* out_bsdf, glm::vec3* out_emission) const = 0;
+    DOOB_NODISCARD virtual bool IsOpaque() const = 0;
 };
 } // namespace devs_out_of_bounds
