@@ -40,7 +40,27 @@ DOOB_NODISCARD DOOB_FORCEINLINE glm::vec3 RandomHemiAdv(const glm::vec3& normal,
     return sampleLocal.x * tangent + sampleLocal.y * bitangent + sampleLocal.z * normal;
 }
 template <typename TRNG>
-DOOB_NODISCARD DOOB_FORCEINLINE glm::vec3 RandomConeAdv(const glm::vec3& direction, float cos_theta_max, uint32_t& seed) {
+DOOB_NODISCARD DOOB_FORCEINLINE glm::vec3 RandomCosWeightedHemiAdv(const glm::vec3& normal, uint32_t& seed) {
+    glm::vec3 right = glm::abs(normal.z) < 0.999f ? glm::vec3(0, 0, 1) : glm::vec3(1, 0, 0);
+    glm::vec3 tangent = glm::normalize(glm::cross(right, normal));
+    glm::vec3 bitangent = glm::cross(normal, tangent);
+
+    float r1 = RandomFloatAdv<TRNG>(seed);
+    float r2 = RandomFloatAdv<TRNG>(seed);
+
+    float phi = 2.0f * glm::pi<float>() * r1;
+
+    float cosTheta = std::sqrt(r2);
+
+    float sinTheta = std::sqrt(1.0f - r2);
+
+    glm::vec3 sampleLocal(sinTheta * std::cos(phi), sinTheta * std::sin(phi), cosTheta);
+
+    return sampleLocal.x * tangent + sampleLocal.y * bitangent + sampleLocal.z * normal;
+}
+template <typename TRNG>
+DOOB_NODISCARD DOOB_FORCEINLINE glm::vec3 RandomConeAdv(
+    const glm::vec3& direction, float cos_theta_max, uint32_t& seed) {
     glm::vec3 side = glm::abs(direction.z) < 0.999f ? glm::vec3(0, 0, 1) : glm::vec3(1, 0, 0);
     glm::vec3 right = glm::normalize(glm::cross(side, direction));
     glm::vec3 up = glm::cross(direction, right);

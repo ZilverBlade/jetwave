@@ -4,20 +4,20 @@
 
 namespace devs_out_of_bounds {
 namespace bxdf {
-    class DiffuseReflection : public IBxDF {
+    class LambertReflection : public IBxDF {
     public:
-        DiffuseReflection(const glm::vec3& r, const glm::vec3& n) : m_r(r), m_normal(n) {}
+        LambertReflection(const glm::vec3& r, const glm::vec3& n) : m_r(r), m_normal(n) {}
 
         glm::vec3 Evaluate(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {
             return glm::abs(glm::dot(m_normal, wi)) * m_r * glm::one_over_pi<float>();
         }
 
         float Pdf(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {
-            return glm::one_over_two_pi<float>();
+            return glm::max(glm::dot(wi, m_normal), 0.0f) * glm::one_over_pi<float>();
         }
 
         glm::vec3 NextSample(const glm::vec3& wo, uint32_t& seed) const override {
-            return RandomHemiAdv<UniformDistribution>(m_normal, seed);
+            return RandomCosWeightedHemiAdv<UniformDistribution>(m_normal, seed);
         }
 
         BxDFType Type() const override { return BxDFType::DIFFUSE; }

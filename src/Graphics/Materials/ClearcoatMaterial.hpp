@@ -1,5 +1,5 @@
 #pragma once
-#include <src/Graphics/BxDFs/DiffuseReflection.hpp>
+#include <src/Graphics/BxDFs/LambertReflection.hpp>
 #include <src/Graphics/BxDFs/MicrofacetReflection.hpp>
 #include <src/Graphics/IMaterial.hpp>
 
@@ -9,7 +9,7 @@ namespace material {
     public:
         bool Evaluate(const Fragment& input, BSDF* out_bsdf, glm::vec3* out_emission) const {
             if (out_bsdf) {
-                out_bsdf->Add<bxdf::DiffuseReflection>(m_albedo, input.normal);
+                out_bsdf->Add<bxdf::LambertReflection>(m_albedo, input.normal);
 
                 out_bsdf->Add<bxdf::MicrofacetReflection>(glm::vec3(0.04f), m_roughness, input.normal);
 

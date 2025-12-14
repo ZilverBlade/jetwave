@@ -11,7 +11,7 @@ namespace material {
             if (out_bsdf) {
                 glm::vec3 cell = glm::floor(input.position / m_grid_size);
                 bool b_foreground = (int(cell.x + cell.y + cell.z) % 2) != 0;
-                out_bsdf->Add<bxdf::DiffuseReflection>(
+                out_bsdf->Add<bxdf::LambertReflection>(
                     b_foreground ? m_grid_foreground : m_grid_background, input.normal);
             }
             return true;

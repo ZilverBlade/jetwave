@@ -208,23 +208,30 @@ bool SceneLoader::Load(const std::string& filepath, Scene& scene, SceneAssets& a
         for (const auto& j_light : j["lights"]) {
             std::string type = j_light.value("type", "point");
             ILight* light_ptr = nullptr;
-            glm::vec3 intensity = j_light.value("intensity", glm::vec3(10.0f));
-
+            float intensity = 1000.0f;
+            if (j_light.contains("lumens")) {
+                intensity = j_light.value("lumens", 0.0f) / (4.0f * glm::pi<float>());
+            } else if (j_light.contains("candelas")) {
+                intensity = j_light.value("candelas", 0.0f);
+            } else if (j_light.contains("lux")) {
+                intensity = j_light.value("lux", 0.0f);
+            }
+            glm::vec3 lux = intensity * j_light.value("color", glm::vec3(1, 1, 1));
             if (type == "point") {
                 glm::vec3 pos = j_light.value("position", glm::vec3(0, 0, 0));
-                auto l = std::make_unique<light::PointLight>(pos, intensity);
+                auto l = std::make_unique<light::PointLight>(pos, lux);
                 light_ptr = l.get();
                 assets.lights.push_back(std::move(l));
             } else if (type == "directional") {
                 glm::vec3 dir = j_light.value("direction", glm::vec3(0, -1, 0));
                 float angle = j_light.value("angle", 2.0f);
-                auto l = std::make_unique<light::DirectionalLight>(dir, intensity, angle);
+                auto l = std::make_unique<light::DirectionalLight>(dir, lux, angle);
                 light_ptr = l.get();
                 assets.lights.push_back(std::move(l));
             } else if (type == "area") {
                 glm::vec3 center = j_light.value("center", glm::vec3(0, 0, 0));
                 glm::vec2 extent = j_light.value("extent", glm::vec2(1, 1));
-                auto l = std::make_unique<light::AreaLight>(center, extent, intensity);
+                auto l = std::make_unique<light::AreaLight>(center, extent, lux);
                 light_ptr = l.get();
                 assets.lights.push_back(std::move(l));
             }

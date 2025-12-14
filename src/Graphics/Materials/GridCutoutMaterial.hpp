@@ -11,7 +11,7 @@ namespace material {
                 return false;
             }
             if (out_bsdf) {
-                out_bsdf->Add<bxdf::DiffuseReflection>(m_grid_foreground, input.normal);
+                out_bsdf->Add<bxdf::LambertReflection>(m_grid_foreground, input.normal);
             }
             return true;
         }

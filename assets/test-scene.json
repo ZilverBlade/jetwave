@@ -33,9 +33,23 @@
       "type": "clearcoat",
 	  "parameters": {
 		"albedo": [1.0, 0.0, 0.0],
-		"roughness": 0.30,
-		"clearcoat": 0.90,
-		"clearcoatRoughness": 0.12
+		"roughness": 0.80,
+		"clearcoat": 1.0,
+		"clearcoatRoughness": 0.04
+	  }
+    },
+    {
+      "name": "redCarPaint",
+      "type": "carPaint",
+	  "parameters": {
+		"paint": [1.0, 0.0, 0.0],
+		"flake": 1.0,
+		"flakeNormalDetailMap": "assets/MetallicFlakeNormal.png",
+		"flakeNormalDetailMapUVScale": [4.0, 4.0],
+		"pearl": 0.0,
+		"pearlColor": [1.0, 1.0, 1.0],
+		"clearCoatDetailMap": "",
+		"clearCoatDetailMapUVScale": [1.0, 1.0]
 	  }
     },
     {
@@ -74,7 +88,7 @@
       "shape": "plane",
       "normal": [0.0, 1.0, 0.0],
       "position": [0.0, 0.0, 0.0],
-      "material": "default"
+      "material": "floorMat"
     },
     {
       "shape": "triangle",

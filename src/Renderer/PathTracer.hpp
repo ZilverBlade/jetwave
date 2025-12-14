@@ -75,9 +75,7 @@ private:
     glm::vec2 m_inv_width_height = { 1.0f, 1.0f };
     int m_width = 1;
     float m_ar = 1.0f;
-    Camera m_camera = {};
 
-    glm::vec3 m_camera_position = {};
     float m_camera_pitch = 0.0f;
     float m_camera_yaw = 0.0f;
 };

@@ -8,14 +8,14 @@ namespace bxdf {
         float D_GGX(float dotNH) const {
             float a2 = m_alpha * m_alpha;
             float f = (dotNH * a2 - dotNH) * dotNH + 1.0f;
-            return a2 / glm::max(glm::pi<float>() * f * f, 1e-6f);
+            return a2 / glm::max(glm::pi<float>() * f * f, 1e-12f);
         }
 
         float G1(const glm::vec3& v) const {
             float k = (m_alpha + 1.0f);
             k = (k * k) / 8.0f;
             float dotNV = glm::max(glm::dot(v, m_normal), 0.0f);
-            return dotNV / glm::max((dotNV * (1.0f - k) + k), 1e-6f);
+            return dotNV / glm::max((dotNV * (1.0f - k) + k), 1e-12f);
         }
 
         float G_Smith(const glm::vec3& wo, const glm::vec3& wi) const { return G1(wo) * G1(wi); }
@@ -30,7 +30,7 @@ namespace bxdf {
 
     public:
         MicrofacetReflection(const glm::vec3& f0, float roughness, const glm::vec3& n)
-            : m_f0(f0), m_alpha(glm::clamp(roughness * roughness, 1e-6f, 1.f)), m_normal(n) {}
+            : m_f0(f0), m_alpha(glm::clamp(roughness * roughness, 1e-12f, 1.f)), m_normal(n) {}
 
 
         glm::vec3 Evaluate(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {
@@ -47,7 +47,7 @@ namespace bxdf {
             float G = G_Smith(wo, wi);
             glm::vec3 F = F_Schlick(dotVH);
 
-            return (D * G * F) / std::max(4.0f * dotNV, 1e-6f);
+            return (D * G * F) / std::max(4.0f * dotNV, 1e-12f);
         }
 
         float Pdf(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {
@@ -59,7 +59,7 @@ namespace bxdf {
             float pdf_h = D * dotNH;
 
             // Jacobian transformation from H space to wi space
-            return pdf_h / std::max(4.0f * dotVH, 1e-6f);
+            return pdf_h / std::max(4.0f * dotVH, 1e-12f);
         }
 
         glm::vec3 NextSample(const glm::vec3& wo, uint32_t& seed) const override {

@@ -17,9 +17,11 @@ namespace shape {
 
             const float det = glm::dot(edge1, pvec);
 
-            if (det < std::numeric_limits<float>::epsilon()) {
+            if (std::abs(det) < std::numeric_limits<float>::epsilon()) {
                 return false;
             }
+
+            bool b_backfacing = det < 0.0f;
 
             const float inv_det = 1.0f / det;
 
@@ -51,7 +53,10 @@ namespace shape {
                 out_intersection->primitive = 0;
 
                 out_intersection->flat_normal = glm::normalize(glm::cross(edge1, edge2));
-                out_intersection->b_front_facing = 1;
+                out_intersection->b_front_facing = b_backfacing ? 0 : 1;
+                if (b_backfacing) {
+                    out_intersection->flat_normal = -out_intersection->flat_normal;
+                }
             }
         }
 

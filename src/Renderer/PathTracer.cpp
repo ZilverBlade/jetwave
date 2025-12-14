@@ -50,6 +50,7 @@ void PathTracer::OnUpdate(float frame_time) {
 
     { // INPUT
         bool b_moved_camera = false;
+        Camera& camera = m_parameters.assets.camera;
         const bool* state = SDL_GetKeyboardState(nullptr);
 
         glm::vec3 camera_move = {};
@@ -110,17 +111,17 @@ void PathTracer::OnUpdate(float frame_time) {
             ResetAccumulator();
 
             if (glm::dot(camera_move, camera_move) > std::numeric_limits<float>::epsilon()) {
-                m_camera.SetPosition(m_camera.GetPosition() + glm::normalize(camera_move) * frame_time);
+                camera.SetPosition(camera.GetPosition() + 8.0f * glm::normalize(camera_move) * frame_time);
             }
-            m_camera.LookDir(forward, CAMERA_FOV_DEG);
+            camera.LookDir(forward, CAMERA_FOV_DEG);
         }
 
 
         if (state[SDL_SCANCODE_MINUS]) {
-            m_parameters.assets.camera.SetLogExposure(m_parameters.assets.camera.GetLogExposure() - 4.0f * frame_time);
+            camera.SetLogExposure(camera.GetLogExposure() - 4.0f * frame_time);
         }
         if (state[SDL_SCANCODE_EQUALS]) {
-            m_parameters.assets.camera.SetLogExposure(m_parameters.assets.camera.GetLogExposure() + 4.0f * frame_time);
+            camera.SetLogExposure(camera.GetLogExposure() + 4.0f * frame_time);
         }
     }
 
@@ -151,7 +152,7 @@ Pixel PathTracer::Evaluate(int x, int y, uint32_t& seed) const {
     ndc.x *= m_ar;
     ndc.y = -ndc.y;
 
-    Ray ray = m_camera.GetRay(ndc);
+    Ray ray = m_parameters.assets.camera.GetRay(ndc);
 
     glm::vec3 final_color = TracePath(ray, seed);
 
