@@ -10,7 +10,7 @@ public:
           m_src_cos_angle(glm::cos(glm::radians(src_angle_deg))) {}
 
     LightSample Sample(const glm::vec3& P, uint32_t& seed) const override {
-        glm::vec3 L = RandomCone(-m_direction, m_src_cos_angle, seed);
+        glm::vec3 L = RandomCone<UniformDistribution>(-m_direction, m_src_cos_angle, seed);
 
         return {
             .L = L,

@@ -65,7 +65,7 @@ static void InitThreads() {
         g_worker_threads.emplace_back([dispatch_id = i]() {
             int my_local_gen = 0;
             uint32_t seed = dispatch_id;
-            RandomStateAdvance(seed);
+            UniformDistribution::RandomStateAdvance(seed);
             while (true) {
                 // --- Wait Phase ---
                 {
@@ -254,7 +254,6 @@ void RenderRegion(int dispatch_id, uint32_t& seed, int x_start, int y_start, int
         Pixel* row_ptr = &g_framebuffer[y * fb_width];
         for (int x = x_start; x < x_end; ++x) {
             row_ptr[x] = g_path_tracer->Evaluate(x, y, seed);
-            RandomStateAdvance(seed);
         }
     }
 }

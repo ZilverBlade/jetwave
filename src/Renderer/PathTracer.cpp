@@ -164,9 +164,9 @@ void PathTracer::OnUpdate(float frame_time) {
 }
 
 
-Pixel PathTracer::Evaluate(int x, int y, uint32_t seed) const {
-    const float jitter_x = RandomFloatAdv(seed) - 0.5f;
-    const float jitter_y = RandomFloatAdv(seed) - 0.5f;
+Pixel PathTracer::Evaluate(int x, int y, uint32_t& seed) const {
+    const float jitter_x = RandomFloatAdv<UniformDistribution>(seed) - 0.5f;
+    const float jitter_y = RandomFloatAdv<UniformDistribution>(seed) - 0.5f;
     const float px = static_cast<float>(x) + 0.5f + jitter_x;
     const float py = static_cast<float>(y) + 0.5f + jitter_y;
 
@@ -202,9 +202,9 @@ Pixel PathTracer::Evaluate(int x, int y, uint32_t seed) const {
     float state = glm::dot(glm::vec3(x, y, 0.23142151f), glm::vec3(43523.432532f, 2132.343f, 123.52122f));
     uint32_t pixel_seed = reinterpret_cast<uint32_t&>(state) & 0x7FFFFF;
 
-    float r_dither_offset = .3f / 255.f * (RandomFloatAdv(pixel_seed) - 0.5f);
-    float g_dither_offset = .3f / 255.f * (RandomFloatAdv(pixel_seed) - 0.5f);
-    float b_dither_offset = .3f / 255.f * (RandomFloatAdv(pixel_seed) - 0.5f);
+    float r_dither_offset = .3f / 255.f * (RandomFloatAdv<UniformDistribution>(pixel_seed) - 0.5f);
+    float g_dither_offset = .3f / 255.f * (RandomFloatAdv<UniformDistribution>(pixel_seed) - 0.5f);
+    float b_dither_offset = .3f / 255.f * (RandomFloatAdv<UniformDistribution>(pixel_seed) - 0.5f);
 
     return DOOB_WRITE_PIXEL_F32(gamma_corrected.r + r_dither_offset, gamma_corrected.g + g_dither_offset,
         gamma_corrected.b + b_dither_offset, 1.0f);
@@ -247,12 +247,8 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
         ComputeDirectLighting(actor, hit, V, seed, diffuse_light, specular_light);
 
         float fresnel = glm::max(glm::dot(V, N), 0.0f);
-        float f2 = fresnel * fresnel;
-        float f4 = f2 * f2;
-        float f5 = f4 * fresnel;
-        float kD = f5;
 
-        radiance += throughput * (diffuse_light * kD + specular_light * (1.0f - kD));
+        radiance += throughput * (diffuse_light + specular_light);
 
         // If we reached max bounces, stop here.
         if (bounce == m_parameters.max_light_bounces)
@@ -260,14 +256,14 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
 
 
         glm::vec3 next_dir;
-        bool is_specular_bounce = RandomFloatAdv(seed) < (fresnel * 0.5f);
+        bool is_specular_bounce = RandomFloatAdv<UniformDistribution>(seed) < (fresnel * 0.5f);
 
         if (is_specular_bounce) {
             // Specular Reflection
             next_dir = glm::reflect(-V, N);
             throughput *= mat.specular_color;
         } else {
-            next_dir = RandomHemiAdv(N, seed);
+            next_dir = RandomHemiAdv<UniformDistribution>(N, seed);
             throughput *= mat.albedo_color;
         }
 

@@ -21,7 +21,7 @@ public:
     void OnResize(int new_width, int new_height);
     void OnUpdate(float frame_time);
 
-    DOOB_NODISCARD Pixel Evaluate(int x, int y, uint32_t seed) const;
+    DOOB_NODISCARD Pixel Evaluate(int x, int y, uint32_t&) const;
 
     void ResetAccumulator();
     uint32_t GetSamplesAccumulated() const { return m_accumulation_count; }

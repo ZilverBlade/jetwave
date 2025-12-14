@@ -9,8 +9,8 @@ public:
         : m_center(center), m_extent(extent), m_intensity(intensity) {}
 
     LightSample Sample(const glm::vec3& P, uint32_t& seed) const override {
-        float offx = m_extent.x * (2.0f * RandomFloatAdv(seed) - 1.0f);
-        float offy = m_extent.y * (2.0f * RandomFloatAdv(seed) - 1.0f);
+        float offx = m_extent.x * (2.0f * RandomFloatAdv<UniformDistribution>(seed) - 1.0f);
+        float offy = m_extent.y * (2.0f * RandomFloatAdv<UniformDistribution>(seed) - 1.0f);
 
         glm::vec3 lightPos = m_center + glm::vec3(offx, 0, offy);
 
