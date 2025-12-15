@@ -24,7 +24,7 @@ namespace light {
 
             float area = m_extent.x * m_extent.y * 4.0f;
 
-            return { .L = L, .Li = m_lux * area, .dist = dist };
+            return { .L = L, .Li = m_lux * area / distSq, .dist = dist };
         }
 
         glm::vec3 m_center;

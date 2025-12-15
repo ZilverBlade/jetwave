@@ -23,6 +23,7 @@
 #include <src/Graphics/Materials/GlassMaterial.hpp>
 #include <src/Graphics/Materials/GridCutoutMaterial.hpp>
 #include <src/Graphics/Materials/GridMaterial.hpp>
+#include <src/Graphics/Materials/MetallicMaterial.hpp>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -48,45 +49,54 @@ inline void from_json(const json& j, glm::vec2& v) {
 }
 } // namespace nlohmann
 namespace devs_out_of_bounds {
+
+    static glm::vec3 ConvertColor(const glm::vec3& color) {
+        return glm::pow(color, glm::vec3(2.2f)); }
+
+
 static void LoadMaterialBasic(material::BasicMaterial& m, const json& parameters) {
-    m.m_albedo = parameters.value("albedo", glm::vec3(1, 1, 1));
+    m.m_albedo = ConvertColor(parameters.value("albedo", glm::vec3(1, 1, 1)));
     m.m_roughness = parameters.value("roughness", 1.0f);
     m.m_specular = parameters.value("specular", 0.5f);
 }
 static void LoadMaterialBasicOren(material::BasicOrenMaterial& m, const json& parameters) {
-    m.m_albedo = parameters.value("albedo", glm::vec3(1, 1, 1));
+    m.m_albedo = ConvertColor(parameters.value("albedo", glm::vec3(1, 1, 1)));
     m.m_diffuse_roughness_angle = parameters.value("diffuseRoughnessAngleRad", glm::half_pi<float>());
     m.m_specular_roughness = parameters.value("specularRoughness", 0.5f);
     m.m_specular = parameters.value("specular", 0.5f);
 }
 
 static void LoadMaterialClearcoat(material::ClearcoatMaterial& m, const json& parameters) {
-    m.m_albedo = parameters.value("albedo", glm::vec3(1, 1, 1));
+    m.m_albedo = ConvertColor(parameters.value("albedo", glm::vec3(1, 1, 1)));
     m.m_clearcoat = parameters.value("clearcoat", 1.0f);
     m.m_clearcoat_roughness = parameters.value("clearcoatRoughness", 0.01f);
     m.m_roughness = parameters.value("roughness", 0.5f);
 }
 
 static void LoadMaterialEmissive(material::EmissiveMaterial& m, const json& parameters) {
-    m.m_color = parameters.value("color", glm::vec3(1, 1, 1));
+    m.m_color = ConvertColor(parameters.value("color", glm::vec3(1, 1, 1)));
     m.m_lumens = parameters.value("lumens", 1000.0f);
 }
 
 static void LoadMaterialGlass(material::GlassMaterial& m, const json& parameters) {
     m.m_ior = parameters.value("indexOfRefraction", 1.5f);
-    m.m_tint = parameters.value("tint", glm::vec3(1, 1, 1));
+    m.m_tint = ConvertColor(parameters.value("tint", glm::vec3(1, 1, 1)));
     m.m_roughness = parameters.value("roughness", 0.0f);
 }
 
 static void LoadMaterialGrid(material::GridMaterial& m, const json& parameters) {
-    m.m_grid_foreground = parameters.value("topLayerAlbedo", glm::vec3(.7f, .7f, .7f));
-    m.m_grid_background = parameters.value("bottomLayerAlbedo", glm::vec3(.4f, .4f, .4f));
+    m.m_grid_foreground = ConvertColor(parameters.value("topLayerAlbedo", glm::vec3(.7f, .7f, .7f)));
+    m.m_grid_background = ConvertColor(parameters.value("bottomLayerAlbedo", glm::vec3(.4f, .4f, .4f)));
     m.m_grid_size = parameters.value("gridSize", 1.0f);
 }
 
 static void LoadMaterialGridCutout(material::GridCutoutMaterial& m, const json& parameters) {
-    m.m_grid_foreground = parameters.value("albedo", glm::vec3(.7f, .7f, .7f));
+    m.m_grid_foreground = ConvertColor(parameters.value("albedo", glm::vec3(.7f, .7f, .7f)));
     m.m_grid_size = parameters.value("gridSize", 1.0f);
+}
+static void LoadMaterialMetallic(material::MetallicMaterial& m, const json& parameters) {
+    m.m_albedo = ConvertColor(parameters.value("albedo", glm::vec3(1, 1, 1)));
+    m.m_roughness = parameters.value("roughness", 0.5f);
 }
 
 
@@ -177,6 +187,11 @@ bool SceneLoader::Load(const std::string& filepath, Scene& scene, SceneAssets& a
             } else if (type == "gridCutoutMaterial") {
                 auto mat = std::make_unique<material::GridCutoutMaterial>();
                 LoadMaterialGridCutout(*mat, j_mat["parameters"]);
+                raw_ptr = mat.get();
+                assets.materials.push_back(std::move(mat));
+            } else if (type == "metallic") {
+                auto mat = std::make_unique<material::MetallicMaterial>();
+                LoadMaterialMetallic(*mat, j_mat["parameters"]);
                 raw_ptr = mat.get();
                 assets.materials.push_back(std::move(mat));
             }

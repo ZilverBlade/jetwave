@@ -12,7 +12,7 @@ namespace bxdf {
         PassthroughBtdf(const glm::vec3& transmissionColor, float opacity = 0.0f)
             : m_t(transmissionColor), m_opacity(opacity) {}
 
-        glm::vec3 Evaluate(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {
+        glm::vec3 EvaluateCos(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {
             if (glm::dot(wi, -wo) > DIRAC_EPSILON) {
                 return m_t * (1.0f - m_opacity);
             }

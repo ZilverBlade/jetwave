@@ -17,7 +17,8 @@ struct IBxDF {
     virtual ~IBxDF() = default;
 
     // How much light reflects from wi to wo?
-    DOOB_NODISCARD virtual glm::vec3 Evaluate(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const = 0;
+    // NOTE: Returns BRDF * NdotL
+    DOOB_NODISCARD virtual glm::vec3 EvaluateCos(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const = 0;
 
     //  What was the probability of generating wi?
     DOOB_NODISCARD virtual float Pdf(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const = 0;

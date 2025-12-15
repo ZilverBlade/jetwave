@@ -11,7 +11,7 @@ namespace bxdf {
             : m_f0(f0), m_alpha(glm::clamp(roughness * roughness, 1e-12f, 1.f)), m_normal(n) {}
 
 
-        glm::vec3 Evaluate(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {
+        glm::vec3 EvaluateCos(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {
             float dotNL = glm::max(glm::dot(m_normal, wi), 0.0f);
             float dotNV = glm::max(glm::dot(m_normal, wo), 0.0f);
 

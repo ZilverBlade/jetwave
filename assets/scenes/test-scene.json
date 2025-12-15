@@ -42,6 +42,14 @@
             }
         },
         {
+            "name": "gold",
+            "type": "metallic",
+            "parameters": {
+                "albedo": [ 1.0, 0.8, 0.01 ],
+                "roughness": 0.2
+            }
+        },
+        {
             "name": "glass",
             "type": "glass",
             "parameters": {
@@ -107,6 +115,12 @@
             "radius": 1.0,
             "center": [ 10.0, 1.0, 8.0 ],
             "material": "glass"
+        },
+        {
+            "shape": "sphere",
+            "radius": 1.0,
+            "center": [ 15.0, 1.0, 3.0 ],
+            "material": "gold"
         },
         {
             "shape": "sphere",

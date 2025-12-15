@@ -45,7 +45,7 @@ public:
     glm::vec3 Evaluate(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const {
         glm::vec3 result(0.0f);
         for (const auto* lobe : m_bxdfs) {
-            result += lobe->Evaluate(wo, wm, wi);
+            result += lobe->EvaluateCos(wo, wm, wi);
         }
         return result;
     }
@@ -63,7 +63,7 @@ public:
         float VdL = glm::abs(glm::dot(wi, wo)); // ensure wi is used
         glm::vec3 wm = VdL > (1 - std::numeric_limits<float>::epsilon()) ? wo : glm::normalize(wi + wo);
         pdf = chosen_lobe->Pdf(wo, wm, wi) * m_inv_bxdfs;
-        return chosen_lobe->Evaluate(wo, wm, wi);
+        return chosen_lobe->EvaluateCos(wo, wm, wi);
     }
 
 private:

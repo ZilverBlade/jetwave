@@ -13,7 +13,7 @@ namespace bxdf {
         }
 
 
-        glm::vec3 Evaluate(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {
+        glm::vec3 EvaluateCos(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {
             float cosThetaI = glm::dot(m_normal, wi);
             float cosThetaO = glm::dot(m_normal, wo);
             if (cosThetaI <= 0.0f || cosThetaO <= 0.0f) {
