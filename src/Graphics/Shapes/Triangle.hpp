@@ -15,14 +15,14 @@ namespace shape {
 
             const glm::vec3 pvec = glm::cross(ray.direction, edge2);
 
-            const float det = glm::dot(edge1, pvec);
+            float det = glm::dot(edge1, pvec);
 
             if (std::abs(det) < std::numeric_limits<float>::epsilon()) {
                 return false;
             }
 
             bool b_backfacing = det < 0.0f;
-
+           
             const float inv_det = 1.0f / det;
 
             const glm::vec3 tvec = ray.origin - m_a;
@@ -58,6 +58,7 @@ namespace shape {
                     out_intersection->flat_normal = -out_intersection->flat_normal;
                 }
             }
+            return true;
         }
 
         DOOB_NODISCARD AABB GetAABB() const override { return AABB(m_a, m_a).Union({ m_b, m_b }).Union({ m_c, m_c }); }

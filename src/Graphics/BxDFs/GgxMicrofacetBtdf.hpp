@@ -12,35 +12,33 @@ namespace bxdf {
 
         glm::vec3 Evaluate(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {
             if (SameHemisphere(wo, wi, m_normal))
-                return glm::vec3(0.0f);
+                return glm::vec3(0.0f); // Refraction must cross the surface
 
             float cosThetaO = glm::dot(wo, m_normal);
             float cosThetaI = glm::dot(wi, m_normal);
-            if (cosThetaO == 0.0f || cosThetaI == 0.0f)
-                return glm::vec3(0.0f);
 
             bool b_entering = cosThetaO > 0.0f;
-            float etaI = b_entering ? 1.0f : m_eta; // Assuming air is 1.0
-            float etaT = b_entering ? m_eta : 1.0f;
+            float eta_wo = b_entering ? 1.0f : m_eta; // IOR of wo's side
+            float eta_wi = b_entering ? m_eta : 1.0f; // IOR of wi's side
 
-            glm::vec3 H = -glm::normalize(etaI * wi + etaT * wo);
+            glm::vec3 H = -glm::normalize(eta_wo * wo + eta_wi * wi);
 
-            float dotNH = glm::max(glm::dot(m_normal, H), 0.0f);
-            float dotVH = glm::max(glm::dot(wo, H), 0.0f);
+            float dotNH = std::abs(glm::dot(m_normal, H));
+            float dotVH = std::abs(glm::dot(wo, H));
+            float dotLH = std::abs(glm::dot(wi, H));
 
-            // Standard Microfacet terms
             float D = D_GGX(dotNH, m_alpha * m_alpha);
-            float G = G_Smith(cosThetaO, cosThetaI, m_alpha);
+            float G = G_Smith(std::abs(cosThetaO), std::abs(cosThetaI), m_alpha);
 
-            float sqrt_f0 = (etaT - etaI) / (etaT + etaI);
-            float F = F_Schlick(dotVH, glm::vec3(sqrt_f0 * sqrt_f0));
+            float sqrt_f0 = (eta_wi - eta_wo) / (eta_wi + eta_wo);
+            glm::vec3 F = F_Schlick(dotVH, glm::vec3(sqrt_f0 * sqrt_f0));
 
-            float sqrtDenom = (etaI * glm::dot(wi, H) + etaT * glm::dot(wo, H));
+            float sqrtDenom = (eta_wo * glm::dot(wo, H) + eta_wi * glm::dot(wi, H));
 
-            float value = (std::abs(glm::dot(wi, H)) * std::abs(glm::dot(wo, H)) * etaT * etaT * D * G) /
+            // Walter '07 Eq. 21
+            float value = (dotLH * dotVH * eta_wi * eta_wi * D * G) /
                           (std::abs(cosThetaI) * std::abs(cosThetaO) * sqrtDenom * sqrtDenom);
 
-            // BTDF transmits the portion that didn't reflect (1 - F)
             return m_t * value * (1.0f - F);
         }
 
@@ -68,44 +66,36 @@ namespace bxdf {
 
             glm::vec3 H = glm::normalize(tangent * H_local.x + m_normal * H_local.y + bitangent * H_local.z);
 
-            // C. Refract the view vector (wo) through the microfacet (H)
-            // GLM refract expects Incident vector and Normal.
-            // Since 'wo' points AWAY, we use '-wo' as incident.
+            // Refract the view vector (wo) through the microfacet (H)
             glm::vec3 wi = glm::refract(-wo, H, eta);
 
-            // D. Handle Total Internal Reflection (TIR)
             // If refract returns 0 length, light is trapped. Return 0 (absorb)
             if (glm::length(wi) < 0.01f)
                 return glm::vec3(0.0f);
 
             return glm::normalize(wi);
         }
-
-        // 3. PDF: Probability of picking that direction
         float Pdf(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {
             if (SameHemisphere(wo, wi, m_normal))
                 return 0.0f;
 
-            // Handle IOR logic again to reconstruct H
             bool b_entering = glm::dot(wo, m_normal) > 0.0f;
-            float etaI = b_entering ? 1.0f : m_eta;
-            float etaT = b_entering ? m_eta : 1.0f;
+            float eta_wo = b_entering ? 1.0f : m_eta;
+            float eta_wi = b_entering ? m_eta : 1.0f;
 
-            glm::vec3 H = -(etaI * wi + etaT * wo);
-            H = glm::normalize(H);
+            glm::vec3 H = -glm::normalize(eta_wo * wo + eta_wi * wi);
 
             float dotNH = glm::max(glm::dot(m_normal, H), 0.0f);
-
-            // Probability of picking H
             float D = D_GGX(dotNH, m_alpha * m_alpha);
             float pdf_h = D * dotNH;
 
-            // Convert PDF(H) to PDF(Wi) using the Jacobian
-            float sqrtDenom = (etaI * glm::dot(wi, H) + etaT * glm::dot(wo, H));
-            float dwh_dwi = (etaT * etaT * std::abs(glm::dot(wi, H))) / (sqrtDenom * sqrtDenom);
+            // Jacobian
+            float sqrtDenom = (eta_wo * glm::dot(wo, H) + eta_wi * glm::dot(wi, H));
+            float dwh_dwi = (eta_wi * eta_wi * std::abs(glm::dot(wi, H))) / (sqrtDenom * sqrtDenom);
 
             return pdf_h * dwh_dwi;
         }
+
         BxDFType Type() const override { return BxDFType::TRANSMISSION; }
 
     private:

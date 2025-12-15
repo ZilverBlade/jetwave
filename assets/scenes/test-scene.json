@@ -10,7 +10,7 @@
         "logExposure": 0.0
     },
     "sky": {
-        "skybox_texture": "assets/skyboxes/citrus_orchard_road_puresky_2k.hdr",
+        "skybox": "assets/skyboxes/citrus_orchard_road_puresky_2k.hdr",
         "lux": 30000.0
     },
     "materials": [
@@ -45,9 +45,9 @@
             "name": "glass",
             "type": "glass",
             "parameters": {
-                "tint": [ 1, 1, 1 ],
+                "tint": [ 0.90, 0.92, 0.91 ],
                 "indexOfRefraction": 1.5,
-                "roughness": 0.0
+                "roughness": 0.1
             }
         },
         {
@@ -112,7 +112,7 @@
             "shape": "sphere",
             "radius": 1.0,
             "center": [ 14.0, 1.0, 0.0 ],
-            "material": "default"
+            "material": "cookieCutter"
         },
         {
             "shape": "plane",
@@ -126,6 +126,14 @@
             "b": [ 0, 3, 0 ],
             "c": [ 1, 2, 0 ],
             "material": "glow"
+        },
+        {
+            "comment": "Transparent Triangle",
+            "shape": "triangle",
+            "a": [ 0.0, 0.0, -4.0 ],
+            "b": [ 1.5, 3.0, -4.0 ],
+            "c": [ 3.0, 0.0, -4.0 ],
+            "material": "glass"
         }
     ],
     "lights": [

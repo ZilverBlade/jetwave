@@ -20,6 +20,7 @@
 #include <src/Graphics/Materials/BasicOrenMaterial.hpp>
 #include <src/Graphics/Materials/ClearcoatMaterial.hpp>
 #include <src/Graphics/Materials/EmissiveMaterial.hpp>
+#include <src/Graphics/Materials/GlassMaterial.hpp>
 #include <src/Graphics/Materials/GridCutoutMaterial.hpp>
 #include <src/Graphics/Materials/GridMaterial.hpp>
 
@@ -70,6 +71,13 @@ static void LoadMaterialEmissive(material::EmissiveMaterial& m, const json& para
     m.m_color = parameters.value("color", glm::vec3(1, 1, 1));
     m.m_lumens = parameters.value("lumens", 1000.0f);
 }
+
+static void LoadMaterialGlass(material::GlassMaterial& m, const json& parameters) {
+    m.m_ior = parameters.value("indexOfRefraction", 1.5f);
+    m.m_tint = parameters.value("tint", glm::vec3(1, 1, 1));
+    m.m_roughness = parameters.value("roughness", 0.0f);
+}
+
 static void LoadMaterialGrid(material::GridMaterial& m, const json& parameters) {
     m.m_grid_foreground = parameters.value("topLayerAlbedo", glm::vec3(.7f, .7f, .7f));
     m.m_grid_background = parameters.value("bottomLayerAlbedo", glm::vec3(.4f, .4f, .4f));
@@ -154,6 +162,11 @@ bool SceneLoader::Load(const std::string& filepath, Scene& scene, SceneAssets& a
             } else if (type == "emissive") {
                 auto mat = std::make_unique<material::EmissiveMaterial>();
                 LoadMaterialEmissive(*mat, j_mat["parameters"]);
+                raw_ptr = mat.get();
+                assets.materials.push_back(std::move(mat));
+            } else if (type == "glass") {
+                auto mat = std::make_unique<material::GlassMaterial>();
+                LoadMaterialGlass(*mat, j_mat["parameters"]);
                 raw_ptr = mat.get();
                 assets.materials.push_back(std::move(mat));
             } else if (type == "gridMaterial") {

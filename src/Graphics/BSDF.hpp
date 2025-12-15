@@ -50,8 +50,7 @@ public:
         return result;
     }
 
-    glm::vec3 Sample_Evaluate(
-        const glm::vec3& wo, glm::vec3& wi, uint32_t& seed, float& pdf) {
+    glm::vec3 Sample_Evaluate(const glm::vec3& wo, glm::vec3& wi, uint32_t& seed, float& pdf) {
         if (m_bxdfs.empty())
             return glm::vec3(0.0f);
 
@@ -61,7 +60,8 @@ public:
 
         BxDFType sampled_type = chosen_lobe->Type();
         wi = chosen_lobe->NextSample(wo, seed);
-        glm::vec3 wm = glm::normalize(wi + wo);
+        float VdL = glm::abs(glm::dot(wi, wo)); // ensure wi is used
+        glm::vec3 wm = VdL > (1 - std::numeric_limits<float>::epsilon()) ? wo : glm::normalize(wi + wo);
         pdf = chosen_lobe->Pdf(wo, wm, wi) * m_inv_bxdfs;
         return chosen_lobe->Evaluate(wo, wm, wi);
     }

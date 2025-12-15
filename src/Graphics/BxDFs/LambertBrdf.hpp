@@ -9,7 +9,7 @@ namespace bxdf {
         LambertBrdf(const glm::vec3& r, const glm::vec3& n) : m_r(r), m_normal(n) {}
 
         glm::vec3 Evaluate(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {
-            return glm::abs(glm::dot(m_normal, wi)) * m_r * glm::one_over_pi<float>();
+            return glm::max(glm::dot(wi, m_normal), 0.0f) * m_r* glm::one_over_pi<float>();
         }
 
         float Pdf(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {

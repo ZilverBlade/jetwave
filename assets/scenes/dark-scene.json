@@ -17,6 +17,15 @@
             }
         },
         {
+            "name": "glass",
+            "type": "glass",
+            "parameters": {
+                "tint": [ 1, 1, 1 ],
+                "indexOfRefraction": 1.5,
+                "roughness": 0.2
+            }
+        },
+        {
             "name": "emitCyan",
             "type": "emissive",
             "parameters": {
@@ -100,6 +109,14 @@
             "center": [ -9.0, 1.0, 2.0 ],
             "radius": 1.0,
             "material": "emitMagenta"
+        },
+        {
+            "comment": "Transparent Triangle",
+            "shape": "triangle",
+            "a": [ 0.0, 0.0, -4.0 ],
+            "b": [ 1.5, 3.0, -4.0 ],
+            "c": [ 3.0, 0.0, -4.0 ],
+            "material": "glass"
         }
     ],
     "lights": [

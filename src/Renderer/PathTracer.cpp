@@ -193,8 +193,6 @@ void PathTracer::ResetAccumulator() {
     m_accumulator.resize(s);
 }
 
-// --- The Core Refactor: Path Logic ---
-
 glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
     glm::vec3 radiance(0.0f);
     glm::vec3 throughput(1.0f);
@@ -207,7 +205,7 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
             radiance += throughput * SampleSky(ray.direction);
             break;
         }
-        glm::vec3 V = -ray.direction; // Outgoing view direction
+        glm::vec3 V = -ray.direction; 
 
         Fragment frag = actor.shape->SampleFragment(hit);
         glm::vec3 Lr = {};
@@ -215,10 +213,9 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
         // avoid excessive heap allocations
         thread_local static BSDF bsdf;
         bsdf.Reset();
-        bool visible = actor.material->Evaluate(frag, &bsdf, &Le);
-        assert(visible);
+        actor.material->Evaluate(frag, &bsdf, &Le);
         if (bsdf.HasBxDF()) {
-            Lr = ComputeDirectLighting(actor, hit, V, seed, &bsdf);
+            Lr = ComputeDirectLighting(hit, V, seed, &bsdf);
         }
         radiance += throughput * (Lr + Le);
 
@@ -232,7 +229,7 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
         throughput *= f / pdf;
 
         // Update Ray
-        ray.origin = hit.position + (hit.flat_normal * 0.001f);
+        ray.origin = hit.position + (glm::sign(glm::dot(wi, hit.flat_normal)) * hit.flat_normal * 1e-6f);
         ray.direction = wi;
 
         // If we reached max bounces, stop here.
@@ -251,54 +248,43 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
     return radiance;
 }
 glm::vec3 PathTracer::ComputeDirectLighting(
-    const DrawableActor& actor, const Intersection& hit, const glm::vec3& V, uint32_t& seed, BSDF* bsdf) const {
+    const Intersection& hit, const glm::vec3& V, uint32_t& seed, BSDF* bsdf) const {
     glm::vec3 Ld(0.0f);
-    glm::vec3 P = hit.position + (hit.flat_normal * 0.001f); // Shadow bias offset
+    glm::vec3 P = hit.position;
 
     for (const auto& light_actor : m_light_actors) {
         LightSample sample = light_actor.light->Sample(P, seed);
-        if (IsOccluded({
-                .origin = P,
-                .t_min = 0.001f,
-                .direction = sample.L,
-                .t_max = sample.dist,
-            })) {
-            continue;
-        }
+        glm::vec3 Lt = CalcShadowTransmission({
+            .origin = P,
+            .t_min = 0.001f,
+            .direction = sample.L,
+            .t_max = sample.dist,
+        });
 
-        Ld += sample.Li * bsdf->Evaluate(V, glm::normalize(sample.L + V), sample.L);
+        if (glm::dot(Lt, Lt) > 0.0f) {
+            Ld += Lt * sample.Li * bsdf->Evaluate(V, glm::normalize(sample.L + V), sample.L);
+        }
     }
     return Ld;
 }
 bool PathTracer::IntersectScene(Ray ray, Intersection* out_intersection, DrawableActor* out_actor) const {
     Intersection closest_hit = { .t = INFINITY };
     DrawableActor closest_actor;
-    bool b_retry_query_scene = false;
     bool b_hit_something = false;
 
-    do {
-        b_retry_query_scene = false;
-        for (const auto& actor : m_drawable_actors) {
-            Intersection curr_intersection;
-            if (!actor.shape->Intersect(ray, &curr_intersection)) {
-                continue;
-            }
-            if (curr_intersection.t >= closest_hit.t) {
-                continue;
-            }
-            if (!actor.material->IsOpaque() &&
-                !actor.material->Evaluate(actor.shape->SampleFragment(curr_intersection), nullptr, nullptr)) {
-                b_retry_query_scene = true;
-                ray.t_min = curr_intersection.t + 1e-6;
-                closest_hit = { .t = INFINITY };
-                break;
-            } else {
-                closest_hit = curr_intersection;
-                closest_actor = actor;
-                b_hit_something = true;
-            }
+    for (const auto& actor : m_drawable_actors) {
+        Intersection curr_intersection;
+        if (!actor.shape->Intersect(ray, &curr_intersection)) {
+            continue;
         }
-    } while (b_retry_query_scene);
+        if (curr_intersection.t >= closest_hit.t) {
+            continue;
+        }
+
+        closest_hit = curr_intersection;
+        closest_actor = actor;
+        b_hit_something = true;
+    }
 
     if (b_hit_something) {
         if (out_intersection)
@@ -309,17 +295,20 @@ bool PathTracer::IntersectScene(Ray ray, Intersection* out_intersection, Drawabl
     }
     return false;
 }
-bool PathTracer::IsOccluded(Ray ray) const {
-    constexpr int MAX_ALPHA_LAYERS = 64;
 
-    for (int layer = 0; layer < MAX_ALPHA_LAYERS; ++layer) {
+glm::vec3 PathTracer::CalcShadowTransmission(Ray ray) const {
+    glm::vec3 throughput(1.0f); // Start with full light
+    const int max_transparent_hits = 8;
+
+    thread_local static BSDF shadow_bsdf;
+
+    for (int step = 0; step < max_transparent_hits; ++step) {
         Intersection closest_hit = { .t = INFINITY };
         DrawableActor closest_actor = {};
         bool b_hit_something = false;
 
         for (const auto& actor : m_drawable_actors) {
             Intersection curr_hit;
-
             if (actor.shape->Intersect(ray, &curr_hit)) {
                 if (curr_hit.t < closest_hit.t) {
                     closest_hit = curr_hit;
@@ -329,34 +318,32 @@ bool PathTracer::IsOccluded(Ray ray) const {
             }
         }
 
-        if (b_hit_something) {
-            if (closest_actor.material->IsOpaque()) {
-                return true;
-            }
-
-            bool b_visible =
-                closest_actor.material->Evaluate(closest_actor.shape->SampleFragment(closest_hit), nullptr, nullptr);
-
-            if (b_visible) {
-                return true;
-            } else {
-                // In case it's a "Hole":
-                // Advance the ray start point JUST past this hit and try again.
-                // We use a relative epsilon to handle large distances safely.
-                float epsilon = std::max(1e-4f, closest_hit.t * 1e-5f);
-                ray.t_min = closest_hit.t + epsilon;
-
-                // CONTINUE the 'layer' loop to find the next hit
-                continue;
-            }
-        } else {
-            // No more hits -> Light is visible
-            return false;
+        if (!b_hit_something || closest_hit.t > ray.t_max) {
+            return throughput;
         }
+
+        shadow_bsdf.Reset();
+        glm::vec3 temp_emission;
+        Fragment frag = closest_actor.shape->SampleFragment(closest_hit);
+
+        closest_actor.material->Evaluate(frag, &shadow_bsdf, &temp_emission);
+
+        // Check forward transmission (wo = -ray, wi = ray)
+        // "How much light passes straight through?"
+        glm::vec3 tr = shadow_bsdf.Evaluate(-ray.direction, ray.direction, ray.direction);
+
+        // TODO: maybe do russian roulette here instead for very low transmissions?
+        if (glm::length(tr) < 0.001f) {
+            return glm::vec3(0.0f);
+        }
+
+        throughput *= tr;
+
+        ray.origin = closest_hit.position + (ray.direction * 1e-6f);
+        ray.t_max -= closest_hit.t;
     }
 
-    // If we exceeded max layers, assume occluded (fail safe)
-    return true;
+    return glm::vec3(0.0f); // Too many layers, assume blocked
 }
 
 glm::vec3 PathTracer::SampleSky(const glm::vec3& direction) const {
@@ -370,7 +357,7 @@ glm::vec3 PathTracer::SampleSky(const glm::vec3& direction) const {
 void PathTracer::RebuildAccelerationStructures() {}
 void PathTracer::Cleanup() { m_parameters.assets.Clear(); }
 
-void PathTracer::LoadScene() { SceneLoader::Load("assets/scenes/dark-scene.json", *m_scene, m_parameters.assets); }
+void PathTracer::LoadScene() { SceneLoader::Load("assets/scenes/test-scene.json", *m_scene, m_parameters.assets); }
 void PathTracer::BakeScene() {
     m_drawable_actors.clear();
     m_light_actors.clear();

@@ -7,7 +7,7 @@
 namespace devs_out_of_bounds {
 
 struct PathTracerParameters {
-    int max_light_bounces = 0;
+    int max_light_bounces = 16;
     bool b_gt7_tonemapper = false;
     bool b_accumulate = false;
 
@@ -22,7 +22,7 @@ public:
     void OnResize(int new_width, int new_height);
     void OnUpdate(float frame_time);
 
-    DOOB_NODISCARD Pixel Evaluate(int x, int y, uint32_t&) const;
+    DOOB_NODISCARD Pixel Evaluate(int x, int y, uint32_t& seed) const;
 
     void ResetAccumulator();
     uint32_t GetSamplesAccumulated() const { return m_accumulation_count; }
@@ -41,14 +41,12 @@ private:
     // Solves the rendering equation iteratively
     DOOB_NODISCARD glm::vec3 TracePath(Ray ray, uint32_t& seed) const;
 
-    DOOB_NODISCARD glm::vec3 ComputeDirectLighting(const DrawableActor& hit_actor, const Intersection& hit_info,
-        const glm::vec3& view_dir, uint32_t& seed, BSDF* bsdf) const;
+    DOOB_NODISCARD glm::vec3 ComputeDirectLighting(
+        const Intersection& hit_info, const glm::vec3& view_dir, uint32_t& seed, BSDF* bsdf) const;
+    DOOB_NODISCARD glm::vec3 CalcShadowTransmission(Ray ray) const;
 
     // Helper to interact with the Scene
     DOOB_NODISCARD bool IntersectScene(Ray ray, Intersection* out_intersection, DrawableActor* out_actor) const;
-
-    // Returns true if a ray hits ANYTHING (for shadows)
-    DOOB_NODISCARD bool IsOccluded(Ray ray) const;
 
     DOOB_NODISCARD glm::vec3 SampleSky(const glm::vec3& direction) const;
 
@@ -68,6 +66,7 @@ private:
 
     // Accumulator
     mutable std::vector<glm::dvec3> m_accumulator = {};
+    mutable std::vector<double> m_time_accumulator = {};
     mutable uint32_t m_accumulation_count = 1;
 
     // Camera
