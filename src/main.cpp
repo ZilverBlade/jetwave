@@ -224,6 +224,10 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
             g_path_tracer->m_parameters.b_gt7_tonemapper = !g_path_tracer->m_parameters.b_gt7_tonemapper;
         }
         if (event->key.key == SDLK_3 && !event->key.repeat) {
+            g_path_tracer->m_parameters.b_radiance_clamping = !g_path_tracer->m_parameters.b_radiance_clamping;
+            g_path_tracer->ResetAccumulator();
+        }
+        if (event->key.key == SDLK_4 && !event->key.repeat) {
             g_show_timing = !g_show_timing;
         }
         if (event->key.key == SDLK_0 && !event->key.repeat) {
@@ -245,7 +249,6 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     std::chrono::duration<float> duration = current_frame - last_frame;
     float frame_time = duration.count();
     last_frame = current_frame;
-
 
     g_path_tracer->OnUpdate(frame_time);
 
@@ -277,9 +280,10 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     SDL_SetRenderDrawColor(g_renderer, 255, 255, 255, 255);
     SDL_RenderDebugTextFormat(g_renderer, 16.f, 16.f, "jetwave | FPS: %i, Frame Time: %.2f ms",
         static_cast<int>(1.0 / frame_time), 1000.0f * frame_time);
-    SDL_RenderDebugTextFormat(g_renderer, 16.f, 26.f, "Max Light Bounces: %i | Tone Mapper: %s | Samples: %u",
+    SDL_RenderDebugTextFormat(g_renderer, 16.f, 26.f,
+        "Max Light Bounces: %i | Tone Mapper: %s | Samples: %u | Clamping: %s",
         g_path_tracer->m_parameters.max_light_bounces, g_path_tracer->m_parameters.b_gt7_tonemapper ? "GT7" : "Exp",
-        g_path_tracer->GetSamplesAccumulated());
+        g_path_tracer->GetSamplesAccumulated(), g_path_tracer->m_parameters.b_radiance_clamping ? "Yes" : "No");
     float inv_shutter_speed, aperture, iso;
     g_path_tracer->m_parameters.assets.camera.GetSensor(aperture, inv_shutter_speed, iso);
     SDL_RenderDebugTextFormat(g_renderer, 16.f, 36.f,

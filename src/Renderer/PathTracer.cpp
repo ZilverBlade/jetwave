@@ -108,7 +108,7 @@ void PathTracer::OnUpdate(float frame_time) {
         m_camera_pitch = std::clamp(m_camera_pitch, -glm::half_pi<float>() + 0.001f, glm::half_pi<float>() - 0.001f);
 
         if (b_moved_camera) {
-            ResetAccumulator();
+            this->ResetAccumulator();
 
             if (glm::dot(camera_move, camera_move) > std::numeric_limits<float>::epsilon()) {
                 camera.SetPosition(camera.GetPosition() + 8.0f * glm::normalize(camera_move) * frame_time);
@@ -119,9 +119,11 @@ void PathTracer::OnUpdate(float frame_time) {
 
         if (state[SDL_SCANCODE_MINUS]) {
             camera.SetLogExposure(camera.GetLogExposure() - 4.0f * frame_time);
+            this->ResetAccumulator();
         }
         if (state[SDL_SCANCODE_EQUALS]) {
             camera.SetLogExposure(camera.GetLogExposure() + 4.0f * frame_time);
+            this->ResetAccumulator();
         }
     }
 
@@ -178,9 +180,9 @@ Pixel PathTracer::Evaluate(int x, int y, uint32_t& seed) const {
     float state = glm::dot(glm::vec3(x, y, 0.23142151f), glm::vec3(43523.432532f, 2132.343f, 123.52122f));
     uint32_t pixel_seed = reinterpret_cast<uint32_t&>(state) & 0x7FFFFF;
 
-    float r_dither_offset = .3f / 255.f * (RandomFloatAdv<UniformDistribution>(pixel_seed) - 0.5f);
-    float g_dither_offset = .3f / 255.f * (RandomFloatAdv<UniformDistribution>(pixel_seed) - 0.5f);
-    float b_dither_offset = .3f / 255.f * (RandomFloatAdv<UniformDistribution>(pixel_seed) - 0.5f);
+    float r_dither_offset = .7f / 255.f * (RandomFloatAdv<UniformDistribution>(pixel_seed) - 0.5f);
+    float g_dither_offset = .7f / 255.f * (RandomFloatAdv<UniformDistribution>(pixel_seed) - 0.5f);
+    float b_dither_offset = .7f / 255.f * (RandomFloatAdv<UniformDistribution>(pixel_seed) - 0.5f);
 
     return DOOB_WRITE_PIXEL_F32(gamma_corrected.r + r_dither_offset, gamma_corrected.g + g_dither_offset,
         gamma_corrected.b + b_dither_offset, 1.0f);
@@ -197,6 +199,15 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
     glm::vec3 radiance(0.0f);
     glm::vec3 throughput(1.0f);
 
+    glm::vec3 max_radiance;
+    if (m_parameters.b_radiance_clamping) {
+        float exposure = m_parameters.assets.camera.ComputeExposureFactor();
+        float dynamic_range_limit = 1.0f;
+        max_radiance = glm::vec3(dynamic_range_limit / std::max(exposure, 1e-4f));
+    } else {
+        max_radiance = glm::vec3(INFINITY);
+    }
+
     for (int bounce = 0; bounce <= m_parameters.max_light_bounces; ++bounce) {
         Intersection hit;
         DrawableActor actor;
@@ -205,7 +216,7 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
             radiance += throughput * SampleSky(ray.direction);
             break;
         }
-        glm::vec3 V = -ray.direction; 
+        glm::vec3 V = -ray.direction;
 
         Fragment frag = actor.shape->SampleFragment(hit);
         glm::vec3 Lr = {};
@@ -215,9 +226,13 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
         bsdf.Reset();
         actor.material->Evaluate(frag, &bsdf, &Le);
         if (bsdf.HasBxDF()) {
-            Lr = ComputeDirectLighting(hit, V, seed, &bsdf);
+            Lr = glm::min(ComputeDirectLighting(hit, V, seed, &bsdf), max_radiance);
         }
-        radiance += throughput * (Lr + Le);
+        radiance += glm::min(throughput * (Lr + Le), max_radiance);
+
+        // If we reached max bounces, stop here.
+        if (bounce == m_parameters.max_light_bounces)
+            break;
 
         float pdf = 0.0f;
         glm::vec3 wi;
@@ -231,10 +246,6 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
         // Update Ray
         ray.origin = hit.position + (glm::sign(glm::dot(wi, hit.flat_normal)) * hit.flat_normal * 1e-6f);
         ray.direction = wi;
-
-        // If we reached max bounces, stop here.
-        if (bounce == m_parameters.max_light_bounces)
-            break;
 
         // russian roulette termination
         if (bounce > 3) {
@@ -300,7 +311,6 @@ glm::vec3 PathTracer::CalcShadowTransmission(Ray ray) const {
     glm::vec3 throughput(1.0f); // Start with full light
     const int max_transparent_hits = 8;
 
-    thread_local static BSDF shadow_bsdf;
 
     for (int step = 0; step < max_transparent_hits; ++step) {
         Intersection closest_hit = { .t = INFINITY };
@@ -322,6 +332,7 @@ glm::vec3 PathTracer::CalcShadowTransmission(Ray ray) const {
             return throughput;
         }
 
+        thread_local static BSDF shadow_bsdf;
         shadow_bsdf.Reset();
         glm::vec3 temp_emission;
         Fragment frag = closest_actor.shape->SampleFragment(closest_hit);

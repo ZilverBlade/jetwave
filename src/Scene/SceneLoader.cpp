@@ -50,9 +50,7 @@ inline void from_json(const json& j, glm::vec2& v) {
 } // namespace nlohmann
 namespace devs_out_of_bounds {
 
-    static glm::vec3 ConvertColor(const glm::vec3& color) {
-        return glm::pow(color, glm::vec3(2.2f)); }
-
+static glm::vec3 ConvertColor(const glm::vec3& color) { return glm::pow(color, glm::vec3(2.2f)); }
 
 static void LoadMaterialBasic(material::BasicMaterial& m, const json& parameters) {
     m.m_albedo = ConvertColor(parameters.value("albedo", glm::vec3(1, 1, 1)));
