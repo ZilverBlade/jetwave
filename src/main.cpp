@@ -21,6 +21,8 @@ static SDL_Renderer* g_renderer = nullptr;
 static SDL_Texture* g_screen_texture = nullptr;
 static SDL_FRect g_dest_rect = {};
 static Pixel* g_framebuffer = nullptr;
+static float* g_time_buffer = nullptr;
+static bool g_show_timing = false;
 static devs_out_of_bounds::PathTracer* g_path_tracer = nullptr;
 
 static std::vector<std::thread> g_worker_threads;
@@ -50,6 +52,40 @@ static constexpr int THREAD_DISPATCH_Y = 64;
 
 static void RenderRegion(
     int dispatch_id, uint32_t& seed, int x_start, int y_start, int width, int height, int fb_width);
+
+glm::vec3 GetHeatmapColor(float t) {
+    // Ensure t is clamped for the gradient lookup
+    t = std::clamp(t, 0.0f, 1.0f);
+
+    // Define color stops: (Stop Position, Color)
+    // 0.0: Black/Deep Blue (Cheapest)
+    // 0.2: Blue
+    // 0.4: Cyan
+    // 0.6: Green (Average)
+    // 0.8: Yellow
+    // 1.0: Red/White (Most Expensive)
+
+    // Simple 5-segment gradient
+    const glm::vec3 c0(0.0f, 0.0f, 0.0f); // Black
+    const glm::vec3 c1(0.0f, 0.0f, 1.0f); // Blue
+    const glm::vec3 c2(0.0f, 1.0f, 1.0f); // Cyan
+    const glm::vec3 c3(0.0f, 1.0f, 0.0f); // Green
+    const glm::vec3 c4(1.0f, 1.0f, 0.0f); // Yellow
+    const glm::vec3 c5(1.0f, 0.0f, 0.0f); // Red
+    const glm::vec3 c6(1.0f, 1.0f, 1.0f); // White
+
+    if (t < 0.16f)
+        return glm::mix(c0, c1, t / 0.16f);
+    if (t < 0.33f)
+        return glm::mix(c1, c2, (t - 0.16f) / 0.17f);
+    if (t < 0.50f)
+        return glm::mix(c2, c3, (t - 0.33f) / 0.17f);
+    if (t < 0.66f)
+        return glm::mix(c3, c4, (t - 0.50f) / 0.16f);
+    if (t < 0.83f)
+        return glm::mix(c4, c5, (t - 0.66f) / 0.17f);
+    return glm::mix(c5, c6, (t - 0.83f) / 0.17f);
+}
 
 static void InitThreads() {
 
@@ -140,6 +176,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
         SDL_CreateTexture(g_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, initial_w, initial_h);
     g_dest_rect = { 0, 0, static_cast<float>(initial_w), static_cast<float>(initial_h) };
     g_framebuffer = new Pixel[initial_w * initial_h];
+    g_time_buffer = new float[initial_w * initial_h];
     SDL_Log("Succesfully initialised SDL");
 
     g_path_tracer = new devs_out_of_bounds::PathTracer();
@@ -169,6 +206,10 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
             delete[] g_framebuffer;
         }
         g_framebuffer = new Pixel[w * h];
+        if (g_time_buffer) {
+            delete[] g_time_buffer;
+        }
+        g_time_buffer = new float[w * h];
         SDL_SetRenderLogicalPresentation(g_renderer, w, h, SDL_LOGICAL_PRESENTATION_LETTERBOX);
         g_path_tracer->OnResize(w, h);
 
@@ -181,6 +222,9 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
         }
         if (event->key.key == SDLK_2 && !event->key.repeat) {
             g_path_tracer->m_parameters.b_gt7_tonemapper = !g_path_tracer->m_parameters.b_gt7_tonemapper;
+        }
+        if (event->key.key == SDLK_3 && !event->key.repeat) {
+            g_show_timing = !g_show_timing;
         }
         if (event->key.key == SDLK_0 && !event->key.repeat) {
             g_path_tracer->m_parameters.b_accumulate = !g_path_tracer->m_parameters.b_accumulate;
@@ -209,6 +253,24 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
 
     DrawFramebuffer(g_dest_rect.w, g_dest_rect.h);
 
+    if (g_show_timing) {
+        for (int y = 0; y < g_curr_height; ++y) {
+            for (int x = 0; x < g_curr_width; ++x) {
+                float avgTimePerPixel = frame_time / static_cast<float>(g_curr_height * g_curr_width);
+                float ratio = g_time_buffer[x + y * g_curr_width] / avgTimePerPixel;
+
+                // Adjust 'MAX_RATIO' to define what is "too expensive".
+                // e.g., 4.0 means "Red/White" happens at 4x the average cost.
+                static constexpr float MAX_RATIO = 100.0f;
+                float t_normalized = ratio / MAX_RATIO;
+
+                float t_visual = glm::pow(t_normalized, 1.0f / 2.2f);
+
+                glm::vec3 col = GetHeatmapColor(t_visual);
+                g_framebuffer[x + y * g_curr_width] = DOOB_WRITE_PIXEL_F32(col.r, col.g, col.b, 1.0f);
+            }
+        }
+    }
     SDL_UpdateTexture(g_screen_texture, NULL, g_framebuffer, g_dest_rect.w * sizeof(Pixel));
     SDL_RenderTexture(g_renderer, g_screen_texture, nullptr, &g_dest_rect);
 
@@ -221,8 +283,9 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     float inv_shutter_speed, aperture, iso;
     g_path_tracer->m_parameters.assets.camera.GetSensor(aperture, inv_shutter_speed, iso);
     SDL_RenderDebugTextFormat(g_renderer, 16.f, 36.f,
-        "Shutter Speed: 1 / %i | Aperture: %.1ff | ISO: %i | Exposure: %.3f", static_cast<int>(std::round(inv_shutter_speed)),
-        aperture, static_cast<int>(std::round(iso)), expf(g_path_tracer->m_parameters.assets.camera.GetLogExposure()));
+        "Shutter Speed: 1 / %i | Aperture: %.1ff | ISO: %i | Exposure: %.3f",
+        static_cast<int>(std::round(inv_shutter_speed)), aperture, static_cast<int>(std::round(iso)),
+        expf(g_path_tracer->m_parameters.assets.camera.GetLogExposure()));
 
     SDL_RenderPresent(g_renderer);
     return SDL_APP_CONTINUE; /* carry on with the program! */
@@ -248,6 +311,10 @@ void SDL_AppQuit(void* appstate, SDL_AppResult result) {
         delete[] g_framebuffer;
         g_framebuffer = nullptr;
     }
+    if (g_time_buffer) {
+        delete[] g_time_buffer;
+        g_time_buffer = nullptr;
+    }
 }
 
 void RenderRegion(int dispatch_id, uint32_t& seed, int x_start, int y_start, int width, int height, int fb_width) {
@@ -256,8 +323,13 @@ void RenderRegion(int dispatch_id, uint32_t& seed, int x_start, int y_start, int
 
     for (int y = y_start; y < y_end; ++y) {
         Pixel* row_ptr = &g_framebuffer[y * fb_width];
+        float* time_row_ptr = &g_time_buffer[y * fb_width];
         for (int x = x_start; x < x_end; ++x) {
+            auto then = std::chrono::high_resolution_clock::now();
             row_ptr[x] = g_path_tracer->Evaluate(x, y, seed);
+            auto now = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<float> duration = now - then;
+            time_row_ptr[x] = duration.count();
         }
     }
 }
