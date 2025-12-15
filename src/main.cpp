@@ -125,7 +125,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
     static int initial_w = 640;
     static int initial_h = 480;
 
-    if (g_window = SDL_CreateWindow("X-Wave", initial_w, initial_h, SDL_WINDOW_RESIZABLE); !g_window) {
+    if (g_window = SDL_CreateWindow("jetwave", initial_w, initial_h, SDL_WINDOW_RESIZABLE); !g_window) {
         SDL_Log("Couldn't create window: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
@@ -213,7 +213,7 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     SDL_RenderTexture(g_renderer, g_screen_texture, nullptr, &g_dest_rect);
 
     SDL_SetRenderDrawColor(g_renderer, 255, 255, 255, 255);
-    SDL_RenderDebugTextFormat(g_renderer, 16.f, 16.f, "X-Wave | FPS: %i, Frame Time: %.2f ms",
+    SDL_RenderDebugTextFormat(g_renderer, 16.f, 16.f, "jetwave | FPS: %i, Frame Time: %.2f ms",
         static_cast<int>(1.0 / frame_time), 1000.0f * frame_time);
     SDL_RenderDebugTextFormat(g_renderer, 16.f, 26.f, "Max Light Bounces: %i | Tone Mapper: %s | Samples: %u",
         g_path_tracer->m_parameters.max_light_bounces, g_path_tracer->m_parameters.b_gt7_tonemapper ? "GT7" : "Exp",
@@ -221,8 +221,8 @@ SDL_AppResult SDL_AppIterate(void* appstate) {
     float inv_shutter_speed, aperture, iso;
     g_path_tracer->m_parameters.assets.camera.GetSensor(aperture, inv_shutter_speed, iso);
     SDL_RenderDebugTextFormat(g_renderer, 16.f, 36.f,
-        "Shutter Speed: 1 / %i | Aperture: %.1ff | ISO: %i | Exposure: %.3f", static_cast<int>(inv_shutter_speed),
-        aperture, static_cast<int>(iso), expf(g_path_tracer->m_parameters.assets.camera.GetLogExposure()));
+        "Shutter Speed: 1 / %i | Aperture: %.1ff | ISO: %i | Exposure: %.3f", static_cast<int>(std::round(inv_shutter_speed)),
+        aperture, static_cast<int>(std::round(iso)), expf(g_path_tracer->m_parameters.assets.camera.GetLogExposure()));
 
     SDL_RenderPresent(g_renderer);
     return SDL_APP_CONTINUE; /* carry on with the program! */

@@ -49,14 +49,14 @@ inline void from_json(const json& j, glm::vec2& v) {
 namespace devs_out_of_bounds {
 static void LoadMaterialBasic(material::BasicMaterial& m, const json& parameters) {
     m.m_albedo = parameters.value("albedo", glm::vec3(1, 1, 1));
-    m.m_roughness = parameters.value("specular", 1.0f);
-    m.m_specular = parameters.value("roughness", 0.5f);
+    m.m_roughness = parameters.value("roughness", 1.0f);
+    m.m_specular = parameters.value("specular", 0.5f);
 }
-
 static void LoadMaterialBasicOren(material::BasicOrenMaterial& m, const json& parameters) {
     m.m_albedo = parameters.value("albedo", glm::vec3(1, 1, 1));
-    m.m_roughness = parameters.value("specular", 1.0f);
-    m.m_specular = parameters.value("roughness", 0.5f);
+    m.m_diffuse_roughness_angle = parameters.value("diffuseRoughnessAngleRad", glm::half_pi<float>());
+    m.m_specular_roughness = parameters.value("specularRoughness", 0.5f);
+    m.m_specular = parameters.value("specular", 0.5f);
 }
 
 static void LoadMaterialClearcoat(material::ClearcoatMaterial& m, const json& parameters) {
@@ -111,7 +111,7 @@ bool SceneLoader::Load(const std::string& filepath, Scene& scene, SceneAssets& a
         float iso = j_camera.value("iso", 100.0f);
         float log_exposure = j_camera.value("logExposure", 0.0f);
 
-        assets.camera.LookDir(direction, fov);
+        assets.camera.LookDir(glm::normalize(direction), fov);
         assets.camera.SetPosition(position);
         assets.camera.SetSensor(aperture, inv_shutter_speed, iso);
         assets.camera.SetLogExposure(log_exposure);
@@ -123,6 +123,9 @@ bool SceneLoader::Load(const std::string& filepath, Scene& scene, SceneAssets& a
         assets.sky.lux = j_sky.value("lux", 0.0f);
         if (j_sky.contains("skybox")) {
             assets.sky.skybox_texture = LoadTexture(j_sky["skybox"], assets);
+        }
+        if (j_sky.contains("tint")) {
+            assets.sky.skybox_tint = j_sky.value("tint", glm::vec3(1, 1, 1));
         }
     }
 

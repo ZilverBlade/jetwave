@@ -1,0 +1,55 @@
+{
+    "camera": {
+        "position": [ 0.0, 3.0, -5.0 ],
+        "direction": [ 0.0, -0.3, 1.0 ],
+
+        "fieldOfView": 70.0,
+        "aperture": 8.0,
+        "invShutterSpeed": 30,
+        "iso": 800.0,
+        "logExposure": 1.0
+    },
+    "materials": [
+        {
+            "name": "lambert",
+            "type": "basic",
+            "parameters": {
+                "albedo": [ 1.0, 1.0, 1.0 ],
+                "roughness": 1.0,
+                "specular": 1.0
+            }
+        },
+        {
+            "name": "oren",
+            "type": "basic_oren",
+            "parameters": {
+                "albedo": [ 1.0, 1.0, 1.0 ],
+                "diffuseRoughnessAngleRad": 1.0,
+                "specularRoughness": 1.0,
+                "specular": 1.0
+            }
+        }
+    ],
+    "actors": [
+        {
+            "shape": "sphere",
+            "radius": 1.0,
+            "center": [ -2.0, 1.0, 0.0 ],
+            "material": "oren"
+        },
+        {
+            "shape": "sphere",
+            "radius": 1.0,
+            "center": [ 2.0, 1.0, 0.0 ],
+            "material": "lambert"
+        }
+    ],
+    "lights": [
+        {
+            "type": "point",
+            "position": [ 0.0, 3.0, -5.0 ],
+            "color": [ 1.0, 1.0, 1.0 ],
+            "lumens": 8000.0
+        }
+    ]
+}

@@ -19,6 +19,7 @@ namespace devs_out_of_bounds {
 struct Sky {
     ITextureView* skybox_texture = {};
     float lux = 0.0f;
+    glm::vec3 skybox_tint = { 1, 1, 1 };
 };
 
 // Container to own the heap memory of loaded objects

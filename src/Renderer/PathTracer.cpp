@@ -360,18 +360,17 @@ bool PathTracer::IsOccluded(Ray ray) const {
 }
 
 glm::vec3 PathTracer::SampleSky(const glm::vec3& direction) const {
+    glm::vec3 sky_color = { 1, 1, 1 };
     if (m_parameters.assets.sky.skybox_texture) {
-        return m_parameters.assets.sky.lux *
-               m_skybox_sampler.SampleCube(m_parameters.assets.sky.skybox_texture, direction);
-    } else {
-        return {};
+        sky_color = m_skybox_sampler.SampleCube(m_parameters.assets.sky.skybox_texture, direction);
     }
+    return m_parameters.assets.sky.lux * m_parameters.assets.sky.skybox_tint * sky_color;
 }
 
 void PathTracer::RebuildAccelerationStructures() {}
 void PathTracer::Cleanup() { m_parameters.assets.Clear(); }
 
-void PathTracer::LoadScene() { SceneLoader::Load("assets/test-scene.json", *m_scene, m_parameters.assets); }
+void PathTracer::LoadScene() { SceneLoader::Load("assets/scenes/tests/full-moon-test.json", *m_scene, m_parameters.assets); }
 void PathTracer::BakeScene() {
     m_drawable_actors.clear();
     m_light_actors.clear();

@@ -1,0 +1,47 @@
+{
+    "camera": {
+        "position": [ 0.0, 2.0, -9.0 ],
+        "direction": [ 0.0, 0.0, 1.0 ],
+
+        "fieldOfView": 70.0,
+        "aperture": 16.0,
+        "invShutterSpeed": 60,
+        "iso": 100.0,
+        "logExposure": 0.0
+    },
+    "sky": {
+        "skybox_tint": [ 1, 1, 1 ],
+        "lux": 30000.0
+    },
+    "materials": [
+        {
+            "name": "lambert",
+            "type": "basic",
+            "parameters": {
+                "albedo": [ 1.0, 1.0, 1.0 ],
+                "roughness": 1.0,
+                "specular": 1.0
+            }
+        },
+        {
+            "name": "oren",
+            "type": "basic_oren",
+            "parameters": {
+                "albedo": [ 1.0, 1.0, 1.0 ],
+                "diffuseRoughnessAngleRad": 1.0,
+                "specularRoughness": 1.0,
+                "specular": 1.0
+            }
+        }
+    ],
+    "actors": [
+        {
+            "shape": "sphere",
+            "radius": 1.0,
+            "center": [ 0.0, 1.0, 0.0 ],
+            "material": "lambert"
+        }
+    ],
+    "lights": [
+    ]
+}

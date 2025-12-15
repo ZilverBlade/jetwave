@@ -6,8 +6,7 @@ namespace devs_out_of_bounds {
 namespace bxdf {
     class OrenNayarBrdf : public IBxDF {
     public:
-        OrenNayarBrdf(const glm::vec3& r, float roughness, const glm::vec3& n)
-            : m_r(r), m_sigma(roughness), m_normal(n) {}
+        OrenNayarBrdf(const glm::vec3& r, float sigma, const glm::vec3& n) : m_r(r), m_sigma(sigma), m_normal(n) {}
 
         float GetPhi(const glm::vec3& v, const glm::vec3& T, const glm::vec3& B) const {
             return glm::atan(glm::dot(v, B), glm::dot(v, T));

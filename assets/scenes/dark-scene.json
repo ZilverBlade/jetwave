@@ -1,0 +1,128 @@
+{
+    "camera": {
+        "position": [ 0.0, 2.0, -9.0 ],
+        "direction": [ 0.0, 0.0, 1.0 ],
+        "fieldOfView": 70.0,
+        "aperture": 16.0,
+        "invShutterSpeed": 60,
+        "iso": 100.0,
+        "logExposure": 5.0
+    },
+    "materials": [
+        {
+            "name": "basicWhite",
+            "type": "basic",
+            "parameters": {
+                "color": [ 1.0, 1.0, 1.0 ]
+            }
+        },
+        {
+            "name": "emitCyan",
+            "type": "emissive",
+            "parameters": {
+                "color": [ 0.0, 1.0, 1.0 ],
+                "lumens": 1000.0
+            }
+        },
+        {
+            "name": "emitMagenta",
+            "type": "emissive",
+            "parameters": {
+                "color": [ 1.0, 0.0, 1.0 ],
+                "lumens": 1000.0
+            }
+        },
+        {
+            "name": "emitLime",
+            "type": "emissive",
+            "parameters": {
+                "color": [ 0.5, 1.0, 0.0 ],
+                "lumens": 1000.0
+            }
+        },
+        {
+            "name": "floorMat",
+            "type": "gridMaterial",
+            "parameters": {
+                "gridSize": 1.0
+            }
+        }
+    ],
+    "actors": [
+        {
+            "shape": "plane",
+            "normal": [ 0.0, 1.0, 0.0 ],
+            "position": [ 0.0, 0.0, 0.0 ],
+            "material": "floorMat"
+        },
+        {
+            "comment": "Left Triangle - Basic Material",
+            "shape": "triangle",
+            "a": [ -3.0, 0.0, 0.0 ],
+            "b": [ -1.5, 3.0, 0.0 ],
+            "c": [ 0.0, 0.0, 0.0 ],
+            "material": "basicWhite"
+        },
+        {
+            "comment": "Center Triangle - Emissive Cyan",
+            "shape": "triangle",
+            "a": [ -1.0, 1.0, 1.0 ],
+            "b": [ 0.0, 4.0, 1.5 ],
+            "c": [ 1.0, 1.0, 1.0 ],
+            "material": "emitCyan"
+        },
+        {
+            "comment": "Right Triangle - Basic Material",
+            "shape": "triangle",
+            "a": [ 0.0, 0.0, 0.0 ],
+            "b": [ 1.5, 3.0, 0.0 ],
+            "c": [ 3.0, 0.0, 0.0 ],
+            "material": "basicWhite"
+        },
+        {
+            "comment": "Background Floating Triangle - Emissive Magenta",
+            "shape": "triangle",
+            "a": [ -2.0, 4.0, 2.0 ],
+            "b": [ 0.0, 6.0, 2.0 ],
+            "c": [ 2.0, 4.0, 2.0 ],
+            "material": "emitMagenta"
+        },
+        {
+            "comment": "Some sphere",
+            "shape": "sphere",
+            "center": [ 12.0, 1.0, 2.0 ],
+            "radius": 1.0,
+            "material": "basicWhite"
+        },
+        {
+            "comment": "Some glowy sphere",
+            "shape": "sphere",
+            "center": [ -9.0, 1.0, 2.0 ],
+            "radius": 1.0,
+            "material": "emitMagenta"
+        }
+    ],
+    "lights": [
+        {
+            "comment": "Red Light from the left",
+            "type": "point",
+            "position": [ -4.0, 3.0, -2.0 ],
+            "color": [ 1.0, 0.1, 0.1 ],
+            "lumens": 5000.0
+        },
+        {
+            "comment": "Blue Light from the right",
+            "type": "point",
+            "position": [ 4.0, 3.0, -2.0 ],
+            "color": [ 0.1, 0.1, 1.0 ],
+            "lumens": 5000.0
+        },
+        {
+            "comment": "Green Light form above/center",
+            "type": "point",
+            "position": [ 0.0, 6.0, -1.0 ],
+            "color": [ 0.1, 1.0, 0.1 ],
+            "lumens": 4000.0
+        }
+    ]
+}
