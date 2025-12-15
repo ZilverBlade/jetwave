@@ -9,8 +9,9 @@ namespace material {
     public:
         void Evaluate(const Fragment& input, BSDF* out_bsdf, glm::vec3* out_emission) const override {
             if (out_bsdf) {
-                out_bsdf->Add<bxdf::LambertBrdf>(m_albedo, input.normal);
-                out_bsdf->Add<bxdf::GgxMicrofacetBrdf>(glm::vec3(0.04f * m_specular), m_roughness, input.normal);
+                glm::vec3 nor = glm::normalize(input.normal);
+                out_bsdf->Add<bxdf::LambertBrdf>(m_albedo, nor);
+                out_bsdf->Add<bxdf::GgxMicrofacetBrdf>(glm::vec3(0.04f * m_specular), m_roughness, nor);
             }
         }
 

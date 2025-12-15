@@ -21,10 +21,16 @@ struct Sky {
     float lux = 0.0f;
     glm::vec3 skybox_tint = { 1, 1, 1 };
 };
+struct IData {
+    virtual ~IData() = default;
+};
 
 // Container to own the heap memory of loaded objects
 struct SceneAssets {
-    std::vector<std::unique_ptr<std::vector<uint8_t>>> misc_data;
+    SceneAssets() {}
+    ~SceneAssets() {}
+
+    std::vector<std::unique_ptr<IData>> misc_data;
 
     std::vector<std::unique_ptr<ITextureView>> textures;
     std::vector<std::unique_ptr<ISamplerState>> samplers;
@@ -54,6 +60,7 @@ struct SceneAssets {
 class SceneLoader {
 public:
     static bool Load(const std::string& filepath, Scene& scene, SceneAssets& assets);
+    static bool LoadGltf(const std::string& gltf_file, Scene& scene, SceneAssets& assets);
 
 private:
     static ITextureView* LoadTexture(const std::string& texturepath, SceneAssets& assets);

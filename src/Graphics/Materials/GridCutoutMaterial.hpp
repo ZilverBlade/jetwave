@@ -11,7 +11,8 @@ namespace material {
             if (out_bsdf) {
                 glm::vec3 cell = glm::floor(input.position / m_grid_size);
                 if ((int(cell.x + cell.y + cell.z) % 2) == 1) {
-                    out_bsdf->Add<bxdf::LambertBrdf>(m_grid_foreground, input.normal);
+                    glm::vec3 nor = glm::normalize(input.normal);
+                    out_bsdf->Add<bxdf::LambertBrdf>(m_grid_foreground, nor);
                 } else {
                     out_bsdf->Add<bxdf::PassthroughBtdf>(glm::vec3(1, 1, 1));
                 }

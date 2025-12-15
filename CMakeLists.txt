@@ -26,7 +26,7 @@ file(GLOB_RECURSE SRC_MAIN_CPP_SOURCE
       "${SRC_MAIN_CPP}/*.hpp"
       "${SRC_MAIN_CPP}/*.cpp")
       
-
+      
 if (WIN32)
     add_executable(jetwave WIN32 
     ${SRC_MAIN_CPP_SOURCE}

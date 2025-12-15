@@ -10,12 +10,13 @@ namespace material {
     public:
         void Evaluate(const Fragment& input, BSDF* out_bsdf, glm::vec3* out_emission) const override {
             if (out_bsdf) {
+                glm::vec3 nor = glm::normalize(input.normal);
                 if (m_ior == 1.0f) {
                     out_bsdf->Add<bxdf::PassthroughBtdf>(m_tint);
                 } else {
-                    out_bsdf->Add<bxdf::GgxMicrofacetBtdf>(m_tint, m_ior, m_roughness, input.normal);
+                    out_bsdf->Add<bxdf::GgxMicrofacetBtdf>(m_tint, m_ior, m_roughness, nor);
                 }
-                out_bsdf->Add<bxdf::GgxMicrofacetBrdf>(glm::vec3(0.04f), m_roughness, input.normal);
+                out_bsdf->Add<bxdf::GgxMicrofacetBrdf>(glm::vec3(0.04f), m_roughness, nor);
             }
         }
 

@@ -21,7 +21,10 @@ namespace bxdf {
             float eta_wo = b_entering ? 1.0f : m_eta; // IOR of wo's side
             float eta_wi = b_entering ? m_eta : 1.0f; // IOR of wi's side
 
-            glm::vec3 H = -glm::normalize(eta_wo * wo + eta_wi * wi);
+            glm::vec3 Hx = eta_wo * wo + eta_wi * wi;
+            if (glm::dot(Hx, Hx) < 1e-12f)
+                return glm::vec3(0.0f);
+            glm::vec3 H = -glm::normalize(Hx);
 
             float dotNH = std::abs(glm::dot(m_normal, H));
             float dotVH = std::abs(glm::dot(wo, H));
@@ -30,14 +33,14 @@ namespace bxdf {
             float D = D_GGX(dotNH, m_alpha * m_alpha);
             float G = G_Smith(std::abs(cosThetaO), std::abs(cosThetaI), m_alpha);
 
-            float sqrt_f0 = (eta_wi - eta_wo) / (eta_wi + eta_wo);
+            float sqrt_f0 = (eta_wi - eta_wo) / std::max(eta_wi + eta_wo, 1e-12f);
             glm::vec3 F = F_Schlick(dotVH, glm::vec3(sqrt_f0 * sqrt_f0));
 
             float sqrtDenom = (eta_wo * glm::dot(wo, H) + eta_wi * glm::dot(wi, H));
 
             // Walter '07 Eq. 21
             float value = (dotLH * dotVH * eta_wi * eta_wi * D * G) /
-                          (std::abs(cosThetaI) * std::abs(cosThetaO) * sqrtDenom * sqrtDenom);
+                          std::max(std::abs(cosThetaI) * std::abs(cosThetaO) * sqrtDenom * sqrtDenom, 1e-12f);
 
             return m_t * value * (1.0f - F);
         }

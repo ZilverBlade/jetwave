@@ -6,6 +6,9 @@
 #include <nlohmann/json.hpp>
 #include <stb_image.h>
 
+#include <src/Asset/GLTFModelLoader.hpp>
+#include <src/Asset/IModelLoader.hpp>
+
 #include <src/Graphics/Shapes/Plane.hpp>
 #include <src/Graphics/Shapes/Sphere.hpp>
 #include <src/Graphics/Shapes/Triangle.hpp>
@@ -96,7 +99,6 @@ static void LoadMaterialMetallic(material::MetallicMaterial& m, const json& para
     m.m_albedo = ConvertColor(parameters.value("albedo", glm::vec3(1, 1, 1)));
     m.m_roughness = parameters.value("roughness", 0.5f);
 }
-
 
 bool SceneLoader::Load(const std::string& filepath, Scene& scene, SceneAssets& assets) {
     std::ifstream file(filepath);
@@ -280,12 +282,19 @@ bool SceneLoader::Load(const std::string& filepath, Scene& scene, SceneAssets& a
             }
 
             if (light_ptr) {
-                scene.NewLightActor(light_ptr);
+                ActorId id = scene.NewLightActor(light_ptr);
             }
         }
     }
 
     return true;
+}
+
+bool SceneLoader::LoadGltf(const std::string& gltf_file, Scene& scene, SceneAssets& assets) {
+    model_loader::GLTFModelLoader loader;
+    model_loader::ModelData data = loader.Load(gltf_file);
+    
+    return false;
 }
 
 ITextureView* SceneLoader::LoadTexture(const std::string& texturepath, SceneAssets& assets) {
@@ -298,12 +307,18 @@ ITextureView* SceneLoader::LoadTexture(const std::string& texturepath, SceneAsse
         int x, y, c;
         float* data = stbi_loadf(texturepath.c_str(), &x, &y, &c, 3);
 
-        assets.misc_data.push_back(std::make_unique<std::vector<uint8_t>>());
-        std::vector<uint8_t>& texture_data = *assets.misc_data.back();
-        texture_data.resize(x * y * 4);
+        class Deleter : public IData {
+        public:
+            Deleter(uint8_t* p) : m_ptr(p) {}
+            ~Deleter() override { delete[] m_ptr; }
+            uint8_t* m_ptr;
+        };
+
+        uint8_t* p_texture_data = new uint8_t[x * y * 4];
+        assets.misc_data.push_back(std::make_unique<Deleter>(p_texture_data));
         for (int i = 0; i < x * y; ++i) {
             float* src_ptr = data + i * c;
-            uint8_t* dst_ptr = texture_data.data() + i * 4;
+            uint8_t* dst_ptr = p_texture_data + i * 4;
 
             float r = src_ptr[0];
             float g = src_ptr[1];
@@ -313,11 +328,10 @@ ITextureView* SceneLoader::LoadTexture(const std::string& texturepath, SceneAsse
         }
         stbi_image_free(data);
 
-        auto tex = std::make_unique<texture_view::Rgbe9TextureView>(texture_data.data(), x, y, x * 4);
+        auto tex = std::make_unique<texture_view::Rgbe9TextureView>(p_texture_data, x, y, x * 4);
         raw_ptr = tex.get();
         assets.textures.push_back(std::move(tex));
     }
-
 
     if (raw_ptr) {
         assets.texture_lookup[texturepath] = raw_ptr;

@@ -4,33 +4,33 @@
 
 namespace devs_out_of_bounds {
 namespace shape {
-    class Trimesh : public IShape {
+    class Trimesh : public IShape, public MeshInstance {
     public:
-        Trimesh(Mesh* trimesh, const std::vector<uint32_t>& indices) : m_trimesh(trimesh), m_indices(indices) {
-            assert((m_indices.size() % 3) == 0 && "Indices must be a multiple of 3!");
-        }
+        Trimesh(const Mesh* mesh, const glm::mat4& transform = glm::mat4(1.0f)) : MeshInstance(mesh, transform) {}
 
         DOOB_NODISCARD bool Intersect(const Ray& ray, Intersection* out_intersection) const override {
-            auto& positions = m_trimesh->m_positions;
-            for (size_t i = 0; i < m_indices.size(); i += 3) {
-                glm::vec3 a = positions[i];
-                glm::vec3 b = positions[i + 1];
-                glm::vec3 c = positions[i + 2];
+            bool b_hit = false;
 
-                const glm::vec3 edge1 = b - a;
-                const glm::vec3 edge2 = c - a;
+            bool closest_b_backfacing = false;
+            float closest_u, closest_v;
+            glm::vec3 closest_edge1, closest_edge2;
+            float closest_t = INFINITY;
+            size_t i;
+            for (i = 0; i < m_indices.size(); i += 3) {
+                const float edge1 = m_b - m_a;
+                const float edge2 = m_c - m_a;
 
                 const glm::vec3 pvec = glm::cross(ray.direction, edge2);
 
-                const float det = glm::dot(edge1, pvec);
+                float det = glm::dot(edge1, pvec);
 
-                if (det < std::numeric_limits<float>::epsilon()) {
+                if (std::abs(det) < std::numeric_limits<float>::epsilon()) {
                     continue;
                 }
 
                 const float inv_det = 1.0f / det;
 
-                const glm::vec3 tvec = ray.origin - a;
+                const glm::vec3 tvec = ray.origin - m_a;
                 const float u = glm::dot(tvec, pvec) * inv_det;
 
                 if (u < 0.0f || u > 1.0f) {
@@ -41,7 +41,7 @@ namespace shape {
                 const float v = glm::dot(ray.direction, qvec) * inv_det;
 
                 if (v < 0.0f || u + v > 1.0f) {
-                    return false;
+                    continue;
                 }
 
                 const float t = glm::dot(edge2, qvec) * inv_det;
@@ -49,32 +49,60 @@ namespace shape {
                 if (t < ray.t_min || t > ray.t_max) {
                     continue;
                 }
-
-                if (out_intersection) {
-                    out_intersection->t = t;
-                    out_intersection->position = ray.origin + ray.direction * t;
-
-                    out_intersection->barycentric = { u, v };
-                    out_intersection->primitive = i / 3;
-
-                    out_intersection->flat_normal = glm::normalize(glm::cross(edge1, edge2));
+                if (t < closest_t) {
+                    closest_t = t;
+                    closest_b_backfacing = det < 0.0f;
+                    closest_edge1 = edge1;
+                    closest_edge2 = edge2;
+                    closest_u = u;
+                    closest_v = v;
                 }
-                return true;
+
+                b_hit = true;
             }
-            return false;
+
+            if (b_hit && out_intersection) {
+                out_intersection->t = closest_t;
+                out_intersection->position = ray.origin + ray.direction * t;
+
+                out_intersection->barycentric = { closest_u, closest_v };
+                out_intersection->primitive = i / 3;
+
+                out_intersection->flat_normal = glm::normalize(glm::cross(closest_edge1, closest_edge2));
+                out_intersection->b_front_facing = closest_b_backfacing ? 0 : 1;
+                if (closest_b_backfacing) {
+                    out_intersection->flat_normal = -out_intersection->flat_normal;
+                }
+            }
+            return b_hit;
         }
 
         DOOB_NODISCARD Fragment SampleFragment(const Intersection& intersection) const override {
+            assert(intersection.primitive * 3 < m_indices.size());
+            float u = intersection.barycentric.x;
+            float v = intersection.barycentric.y;
+            float w = 1.0f - u - v;
+
             return {
-                .position = intersection.position,
-                .normal = intersection.flat_normal,
-                .tangent = {},
-                .uv = {},
+                .position = u * m_positions[m_indices[intersection.primitive * 3 + 0]] +
+                            v * m_positions[m_indices[intersection.primitive * 3 + 1]] +
+                            w * m_positions[m_indices[intersection.primitive * 3 + 2]],
+
+                .normal = u * m_attributes[m_indices[intersection.primitive * 3 + 0]].normal +
+                          v * m_attributes[m_indices[intersection.primitive * 3 + 1]].normal +
+                          w * m_attributes[m_indices[intersection.primitive * 3 + 2]].normal,
+
+                .tangent = u * m_attributes[m_indices[intersection.primitive * 3 + 0]].tangent +
+                           v * m_attributes[m_indices[intersection.primitive * 3 + 1]].tangent +
+                           w * m_attributes[m_indices[intersection.primitive * 3 + 2]].tangent,
+
+                .uv = u * m_attributes[m_indices[intersection.primitive * 3 + 0]].uv +
+                      v * m_attributes[m_indices[intersection.primitive * 3 + 1]].uv +
+                      w * m_attributes[m_indices[intersection.primitive * 3 + 2]].uv,
+
+                .b_front_face = intersection.b_front_facing != 0,
             };
         }
-
-        Trimesh* m_trimesh;
-        std::vector<uint32_t> m_indices;
     };
 } // namespace shape
 } // namespace devs_out_of_bounds

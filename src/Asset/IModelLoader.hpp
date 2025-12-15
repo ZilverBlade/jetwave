@@ -11,7 +11,7 @@
 
 
 namespace devs_out_of_bounds {
-
+namespace model_loader {
     struct Image {
         std::string name = {};
         const uint32_t imageIndex = {};
@@ -170,4 +170,5 @@ namespace devs_out_of_bounds {
         virtual ImageData ReadImageData(const ModelData& modelData, const Image& image) = 0;
         virtual MeshData ReadMeshData(const ModelData& modelData, const Mesh& mesh) = 0;
     };
-} // namespace Editor
+} // namespace model_loader
+} // namespace devs_out_of_bounds

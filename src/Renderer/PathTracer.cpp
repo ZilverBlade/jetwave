@@ -202,7 +202,7 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
     glm::vec3 max_radiance;
     if (m_parameters.b_radiance_clamping) {
         float exposure = m_parameters.assets.camera.ComputeExposureFactor();
-        float dynamic_range_limit = 1.0f;
+        float dynamic_range_limit = 20.0f;
         max_radiance = glm::vec3(dynamic_range_limit / std::max(exposure, 1e-4f));
     } else {
         max_radiance = glm::vec3(INFINITY);
@@ -238,7 +238,8 @@ glm::vec3 PathTracer::TracePath(Ray ray, uint32_t& seed) const {
         glm::vec3 wi;
         glm::vec3 f = bsdf.Sample_Evaluate(V, wi, seed, pdf);
 
-        if (pdf < FLT_EPSILON || glm::all(glm::lessThan(f, glm::vec3(FLT_EPSILON))) || glm::any(glm::isnan(f))) {
+        if (pdf < FLT_EPSILON || glm::isnan(pdf) || glm::all(glm::lessThan(f, glm::vec3(FLT_EPSILON))) ||
+            glm::any(glm::isnan(f))) {
             break;
         }
         throughput *= f / pdf;

@@ -31,6 +31,7 @@ public:
     DOOB_NODISCARD DOOB_FORCEINLINE Ray GetRay(glm::vec2 ndc) const {
         return {
             .origin = m_position,
+            .t_min = 1e-6f,
             .direction = glm::normalize((m_right * ndc.x + m_up * ndc.y) + m_forward * m_focal_length),
         };
     }

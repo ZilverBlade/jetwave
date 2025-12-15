@@ -1,6 +1,6 @@
 #pragma once
-#include <src/Graphics/BxDFs/LambertBrdf.hpp>
 #include <src/Graphics/BxDFs/GgxMicrofacetBrdf.hpp>
+#include <src/Graphics/BxDFs/LambertBrdf.hpp>
 #include <src/Graphics/IMaterial.hpp>
 
 namespace devs_out_of_bounds {
@@ -9,12 +9,10 @@ namespace material {
     public:
         void Evaluate(const Fragment& input, BSDF* out_bsdf, glm::vec3* out_emission) const override {
             if (out_bsdf) {
-                out_bsdf->Add<bxdf::LambertBrdf>(m_albedo, input.normal);
-
-                out_bsdf->Add<bxdf::GgxMicrofacetBrdf>(glm::vec3(0.04f), m_roughness, input.normal);
-
-                out_bsdf->Add<bxdf::GgxMicrofacetBrdf>(
-                    glm::vec3(0.04f * m_clearcoat), m_clearcoat_roughness, input.normal); // 0.01 roughness
+                glm::vec3 nor = glm::normalize(input.normal);
+                out_bsdf->Add<bxdf::LambertBrdf>(m_albedo, nor);
+                out_bsdf->Add<bxdf::GgxMicrofacetBrdf>(glm::vec3(0.04f), m_roughness, nor);
+                out_bsdf->Add<bxdf::GgxMicrofacetBrdf>(glm::vec3(0.04f * m_clearcoat), m_clearcoat_roughness, nor);
             }
         }
 
