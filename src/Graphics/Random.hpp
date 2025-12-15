@@ -1,6 +1,13 @@
 #pragma once
 #include <src/Core.hpp>
 
+// TODO, move to another file?
+static void CreateTangentSpace(glm::vec3& tangent, glm::vec3& bitangent, const glm::vec3& normal) {
+    glm::vec3 right = glm::abs(normal.z) < 0.999f ? glm::vec3(0, 0, 1) : glm::vec3(1, 0, 0);
+    tangent = glm::normalize(glm::cross(right, normal));
+    bitangent = glm::cross(normal, tangent);
+}
+
 struct UniformDistribution {
     DOOB_NODISCARD DOOB_FORCEINLINE static uint32_t RandomStateAdvance(uint32_t& seed) {
         uint32_t state = seed;
@@ -20,10 +27,10 @@ DOOB_NODISCARD DOOB_FORCEINLINE float RandomFloatAdv(uint32_t& seed) {
 }
 template <typename TRNG>
 DOOB_NODISCARD DOOB_FORCEINLINE glm::vec3 RandomHemiAdv(const glm::vec3& normal, uint32_t& seed) {
-    glm::vec3 right = glm::abs(normal.z) < 0.999f ? glm::vec3(0, 0, 1) : glm::vec3(1, 0, 0);
 
-    glm::vec3 tangent = glm::normalize(glm::cross(right, normal));
-    glm::vec3 bitangent = glm::cross(normal, tangent);
+    glm::vec3 tangent;
+    glm::vec3 bitangent;
+    CreateTangentSpace(tangent, bitangent, normal);
 
     float r1 = RandomFloatAdv<TRNG>(seed);
     float r2 = RandomFloatAdv<TRNG>(seed);
@@ -41,9 +48,9 @@ DOOB_NODISCARD DOOB_FORCEINLINE glm::vec3 RandomHemiAdv(const glm::vec3& normal,
 }
 template <typename TRNG>
 DOOB_NODISCARD DOOB_FORCEINLINE glm::vec3 RandomCosWeightedHemiAdv(const glm::vec3& normal, uint32_t& seed) {
-    glm::vec3 right = glm::abs(normal.z) < 0.999f ? glm::vec3(0, 0, 1) : glm::vec3(1, 0, 0);
-    glm::vec3 tangent = glm::normalize(glm::cross(right, normal));
-    glm::vec3 bitangent = glm::cross(normal, tangent);
+    glm::vec3 tangent;
+    glm::vec3 bitangent;
+    CreateTangentSpace(tangent, bitangent, normal);
 
     float r1 = RandomFloatAdv<TRNG>(seed);
     float r2 = RandomFloatAdv<TRNG>(seed);

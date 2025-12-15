@@ -10,7 +10,6 @@ struct PathTracerParameters {
     int max_light_bounces = 0;
     bool b_gt7_tonemapper = false;
     bool b_accumulate = false;
-    
 
     SceneAssets assets;
 };

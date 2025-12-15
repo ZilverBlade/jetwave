@@ -13,91 +13,105 @@
     "skybox": "assets/citrus_orchard_road_puresky_2k.hdr",
 	"lux": 30000.0
   },
-  "materials": [
-    {
-      "name": "default",
-      "type": "basic",
-	  "parameters": {
-	  }
-    },
-    {
-      "name": "glow",
-      "type": "emissive",
-	  "parameters": {
-		"color": [1,1,1],
-		"lumens": 1000000.0
-	  }
-    },
-    {
-      "name": "redPlastic",
-      "type": "clearcoat",
-	  "parameters": {
-		"albedo": [1.0, 0.0, 0.0],
-		"roughness": 0.80,
-		"clearcoat": 1.0,
-		"clearcoatRoughness": 0.04
-	  }
-    },
-    {
-      "name": "redCarPaint",
-      "type": "carPaint",
-	  "parameters": {
-		"paint": [1.0, 0.0, 0.0],
-		"flake": 1.0,
-		"flakeNormalDetailMap": "assets/MetallicFlakeNormal.png",
-		"flakeNormalDetailMapUVScale": [4.0, 4.0],
-		"pearl": 0.0,
-		"pearlColor": [1.0, 1.0, 1.0],
-		"clearCoatDetailMap": "",
-		"clearCoatDetailMapUVScale": [1.0, 1.0]
-	  }
-    },
-    {
-      "name": "",
-      "type": "clearcoat",
-	  "parameters": {
-		"albedo": [1.0, 0.0, 0.0],
-		"roughness": 0.30,
-		"clearcoat": 0.90,
-		"clearcoatRoughness": 0.02
-	  }
-    },
-    {
-      "name": "floorMat",
-      "type": "gridMaterial",
-	  "parameters": {
-		"gridSize": 1.0
-	  }
-    },
-    {
-      "name": "cookieCutter",
-      "type": "gridCutoutMaterial",
-	  "parameters": {
-		"gridSize": 1.0
-	  }
-    }
-  ],
-  "actors": [
-    {
-      "shape": "sphere",
-      "radius": 1.0,
-      "center": [0.0, 1.0, 0.0],
-      "material": "redPlastic"
-    },
-    {
-      "shape": "plane",
-      "normal": [0.0, 1.0, 0.0],
-      "position": [0.0, 0.0, 0.0],
-      "material": "floorMat"
-    },
-    {
-      "shape": "triangle",
-      "a": [-1, 2, 0],
-      "b": [0, 3, 0],
-      "c": [1, 2, 0],
-      "material": "glow"
-    }
-  ],
+    "materials": [
+        {
+            "name": "default",
+            "type": "basic",
+            "parameters": {
+                "albedo": [ 1.0, 1.0, 1.0 ],
+                "roughness": 1.0,
+                "specular": 0.0
+            }
+        },
+        {
+            "name": "oren",
+            "type": "basic_oren",
+            "parameters": {
+                "albedo": [ 1.0, 1.0, 1.0 ],
+                "roughness": 1.0,
+                "specular": 0.0
+            }
+        },
+        {
+            "name": "glow",
+            "type": "emissive",
+            "parameters": {
+                "color": [ 1, 1, 1 ],
+                "lumens": 1000000.0
+            }
+        },
+        {
+            "name": "redPlastic",
+            "type": "clearcoat",
+            "parameters": {
+                "albedo": [ 1.0, 0.0, 0.0 ],
+                "roughness": 0.80,
+                "clearcoat": 1.0,
+                "clearcoatRoughness": 0.04
+            }
+        },
+        {
+            "name": "redCarPaint",
+            "type": "carPaint",
+            "parameters": {
+                "paint": [ 1.0, 0.0, 0.0 ],
+                "flake": 1.0,
+                "flakeNormalDetailMap": "assets/MetallicFlakeNormal.png",
+                "flakeNormalDetailMapUVScale": [ 4.0, 4.0 ],
+                "pearl": 0.0,
+                "pearlColor": [ 1.0, 1.0, 1.0 ],
+                "clearCoatDetailMap": "",
+                "clearCoatDetailMapUVScale": [ 1.0, 1.0 ]
+            }
+        },
+        {
+            "name": "floorMat",
+            "type": "gridMaterial",
+            "parameters": {
+                "gridSize": 1.0
+            }
+        },
+        {
+            "name": "cookieCutter",
+            "type": "gridCutoutMaterial",
+            "parameters": {
+                "gridSize": 1.0
+            }
+        }
+    ],
+    "actors": [
+        {
+            "shape": "sphere",
+            "radius": 1.0,
+            "center": [ 0.0, 1.0, 0.0 ],
+            "material": "redPlastic"
+        },
+        {
+            "shape": "sphere",
+            "radius": 1.0,
+            "center": [ 10.0, 1.0, 0.0 ],
+            "material": "oren"
+        },
+        {
+            "shape": "sphere",
+            "radius": 1.0,
+            "center": [ 14.0, 1.0, 0.0 ],
+            "material": "default"
+        },
+        {
+            "shape": "plane",
+            "normal": [ 0.0, 1.0, 0.0 ],
+            "position": [ 0.0, 0.0, 0.0 ],
+            "material": "floorMat"
+        },
+        {
+            "shape": "triangle",
+            "a": [ -1, 2, 0 ],
+            "b": [ 0, 3, 0 ],
+            "c": [ 1, 2, 0 ],
+            "material": "glow"
+        }
+    ],
   "lights": [
     {
       "type": "point",
@@ -107,7 +121,7 @@
     },
     {
       "type": "directional",
-      "direction": [-0.5, -1.0, -0.5],
+      "direction": [0.0, -1.0, -1.0],
       "color": [1.0, 1.0, 1.0],
       "angle": 2.0,
 	  "lux": 110000.0

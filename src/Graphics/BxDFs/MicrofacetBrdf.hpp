@@ -4,7 +4,7 @@
 
 namespace devs_out_of_bounds {
 namespace bxdf {
-    class MicrofacetReflection : public IBxDF {
+    class MicrofacetBrdf : public IBxDF {
         float D_GGX(float dotNH) const {
             float a2 = m_alpha * m_alpha;
             float f = (dotNH * a2 - dotNH) * dotNH + 1.0f;
@@ -29,7 +29,7 @@ namespace bxdf {
         }
 
     public:
-        MicrofacetReflection(const glm::vec3& f0, float roughness, const glm::vec3& n)
+        MicrofacetBrdf(const glm::vec3& f0, float roughness, const glm::vec3& n)
             : m_f0(f0), m_alpha(glm::clamp(roughness * roughness, 1e-12f, 1.f)), m_normal(n) {}
 
 

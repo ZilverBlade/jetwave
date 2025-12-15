@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(xwave)
+project(jetwave)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_SUPPRESS_REGENERATION true)
@@ -28,20 +28,20 @@ file(GLOB_RECURSE SRC_MAIN_CPP_SOURCE
       
 
 if (WIN32)
-    add_executable(xwave WIN32 
+    add_executable(jetwave WIN32 
     ${SRC_MAIN_CPP_SOURCE}
     )
 else()
-    add_executable(xwave 
+    add_executable(jetwave
     ${SRC_MAIN_CPP_SOURCE}
     )
 endif()
 
 if (MSVC)
-target_compile_options(xwave PRIVATE "/arch:AVX2")
+target_compile_options(jetwave PRIVATE "/arch:AVX2")
 endif()
 
-target_link_libraries(xwave PRIVATE
+target_link_libraries(jetwave PRIVATE
     glm::glm-header-only
     fastgltf::fastgltf
     SDL3::SDL3-shared
@@ -53,10 +53,10 @@ file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/assets"
          
 message(STATUS "Copied assets to ${CMAKE_BINARY_DIR}/assets")
 
-target_include_directories(xwave PRIVATE
+target_include_directories(jetwave PRIVATE
     ${STB_IMAGE_DIR}
 )
-target_include_directories(xwave
+target_include_directories(jetwave
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:include>

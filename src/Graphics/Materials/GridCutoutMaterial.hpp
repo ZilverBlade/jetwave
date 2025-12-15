@@ -1,5 +1,6 @@
 #pragma once
 #include <src/Graphics/IMaterial.hpp>
+#include <src/Graphics/BxDFs/LambertBrdf.hpp>
 
 namespace devs_out_of_bounds {
 namespace material {
@@ -11,7 +12,7 @@ namespace material {
                 return false;
             }
             if (out_bsdf) {
-                out_bsdf->Add<bxdf::LambertReflection>(m_grid_foreground, input.normal);
+                out_bsdf->Add<bxdf::LambertBrdf>(m_grid_foreground, input.normal);
             }
             return true;
         }

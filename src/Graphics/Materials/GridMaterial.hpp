@@ -1,5 +1,6 @@
 #pragma once
 #include <src/Graphics/IMaterial.hpp>
+#include <src/Graphics/BxDFs/LambertBrdf.hpp>
 
 namespace devs_out_of_bounds {
 namespace material {
@@ -11,7 +12,7 @@ namespace material {
             if (out_bsdf) {
                 glm::vec3 cell = glm::floor(input.position / m_grid_size);
                 bool b_foreground = (int(cell.x + cell.y + cell.z) % 2) != 0;
-                out_bsdf->Add<bxdf::LambertReflection>(
+                out_bsdf->Add<bxdf::LambertBrdf>(
                     b_foreground ? m_grid_foreground : m_grid_background, input.normal);
             }
             return true;

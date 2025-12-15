@@ -17,6 +17,7 @@
 #include <src/Graphics/TextureViews/Rgbe9TextureView.hpp>
 
 #include <src/Graphics/Materials/BasicMaterial.hpp>
+#include <src/Graphics/Materials/BasicOrenMaterial.hpp>
 #include <src/Graphics/Materials/ClearcoatMaterial.hpp>
 #include <src/Graphics/Materials/EmissiveMaterial.hpp>
 #include <src/Graphics/Materials/GridCutoutMaterial.hpp>
@@ -48,6 +49,14 @@ inline void from_json(const json& j, glm::vec2& v) {
 namespace devs_out_of_bounds {
 static void LoadMaterialBasic(material::BasicMaterial& m, const json& parameters) {
     m.m_albedo = parameters.value("albedo", glm::vec3(1, 1, 1));
+    m.m_roughness = parameters.value("specular", 1.0f);
+    m.m_specular = parameters.value("roughness", 0.5f);
+}
+
+static void LoadMaterialBasicOren(material::BasicOrenMaterial& m, const json& parameters) {
+    m.m_albedo = parameters.value("albedo", glm::vec3(1, 1, 1));
+    m.m_roughness = parameters.value("specular", 1.0f);
+    m.m_specular = parameters.value("roughness", 0.5f);
 }
 
 static void LoadMaterialClearcoat(material::ClearcoatMaterial& m, const json& parameters) {
@@ -129,6 +138,11 @@ bool SceneLoader::Load(const std::string& filepath, Scene& scene, SceneAssets& a
                 LoadMaterialBasic(*mat, j_mat["parameters"]);
                 raw_ptr = mat.get();
                 assets.materials.push_back(std::move(mat));
+            } else if (type == "basic_oren") {
+                auto mat = std::make_unique<material::BasicOrenMaterial>();
+                LoadMaterialBasicOren(*mat, j_mat["parameters"]);
+                raw_ptr = mat.get();
+                assets.materials.push_back(std::move(mat));
             } else if (type == "clearcoat") {
                 auto mat = std::make_unique<material::ClearcoatMaterial>();
                 LoadMaterialClearcoat(*mat, j_mat["parameters"]);
@@ -149,7 +163,7 @@ bool SceneLoader::Load(const std::string& filepath, Scene& scene, SceneAssets& a
                 LoadMaterialGridCutout(*mat, j_mat["parameters"]);
                 raw_ptr = mat.get();
                 assets.materials.push_back(std::move(mat));
-            } 
+            }
 
             if (raw_ptr) {
                 assets.material_lookup[name] = raw_ptr;
@@ -225,7 +239,7 @@ bool SceneLoader::Load(const std::string& filepath, Scene& scene, SceneAssets& a
             } else if (type == "directional") {
                 glm::vec3 dir = j_light.value("direction", glm::vec3(0, -1, 0));
                 float angle = j_light.value("angle", 2.0f);
-                auto l = std::make_unique<light::DirectionalLight>(dir, lux, angle);
+                auto l = std::make_unique<light::DirectionalLight>(glm::normalize(dir), lux, angle);
                 light_ptr = l.get();
                 assets.lights.push_back(std::move(l));
             } else if (type == "area") {
