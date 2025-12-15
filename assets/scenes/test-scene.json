@@ -42,6 +42,15 @@
             }
         },
         {
+            "name": "glass",
+            "type": "glass",
+            "parameters": {
+                "tint": [ 1, 1, 1 ],
+                "indexOfRefraction": 1.5,
+                "roughness": 0.0
+            }
+        },
+        {
             "name": "redPlastic",
             "type": "clearcoat",
             "parameters": {
@@ -92,6 +101,12 @@
             "radius": 1.0,
             "center": [ 10.0, 1.0, 0.0 ],
             "material": "oren"
+        },
+        {
+            "shape": "sphere",
+            "radius": 1.0,
+            "center": [ 10.0, 1.0, 8.0 ],
+            "material": "glass"
         },
         {
             "shape": "sphere",

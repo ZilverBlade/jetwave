@@ -1,35 +1,13 @@
 #pragma once
 #include <src/Graphics/IBxDF.hpp>
 #include <src/Graphics/Random.hpp>
+#include <src/Graphics/BxDFs/Common/Microfacet.hpp>
 
 namespace devs_out_of_bounds {
 namespace bxdf {
-    class MicrofacetBrdf : public IBxDF {
-        float D_GGX(float dotNH) const {
-            float a2 = m_alpha * m_alpha;
-            float f = (dotNH * a2 - dotNH) * dotNH + 1.0f;
-            return a2 / glm::max(glm::pi<float>() * f * f, 1e-12f);
-        }
-
-        float G1(const glm::vec3& v) const {
-            float k = (m_alpha + 1.0f);
-            k = (k * k) / 8.0f;
-            float dotNV = glm::max(glm::dot(v, m_normal), 0.0f);
-            return dotNV / glm::max((dotNV * (1.0f - k) + k), 1e-12f);
-        }
-
-        float G_Smith(const glm::vec3& wo, const glm::vec3& wi) const { return G1(wo) * G1(wi); }
-
-        // --- 3. Fresnel (F) : Schlick ---
-        glm::vec3 F_Schlick(float dotVH) const {
-            const glm::vec3 f = (1.0f - m_f0) * (1.0f - dotVH);
-            const glm::vec3 f2 = f * f;
-            const glm::vec3 f5 = f2 * f2 * f;
-            return m_f0 + f5;
-        }
-
+    class GgxMicrofacetBrdf : public IBxDF {
     public:
-        MicrofacetBrdf(const glm::vec3& f0, float roughness, const glm::vec3& n)
+        GgxMicrofacetBrdf(const glm::vec3& f0, float roughness, const glm::vec3& n)
             : m_f0(f0), m_alpha(glm::clamp(roughness * roughness, 1e-12f, 1.f)), m_normal(n) {}
 
 
@@ -43,9 +21,9 @@ namespace bxdf {
             float dotNH = glm::max(glm::dot(m_normal, wm), 0.0f);
             float dotVH = glm::max(glm::dot(wo, wm), 0.0f);
 
-            float D = D_GGX(dotNH);
-            float G = G_Smith(wo, wi);
-            glm::vec3 F = F_Schlick(dotVH);
+            float D = D_GGX(dotNH, m_alpha * m_alpha);
+            float G = G_Smith_Disney(dotNV, dotNL, m_alpha);
+            glm::vec3 F = F_Schlick(dotVH, m_f0);
 
             return (D * G * F) / std::max(4.0f * dotNV, 1e-12f);
         }
@@ -55,7 +33,7 @@ namespace bxdf {
             float dotVH = glm::max(glm::dot(wo, wm), 0.0f);
 
             // Probability of picking H
-            float D = D_GGX(dotNH);
+            float D = D_GGX(dotNH, m_alpha * m_alpha);
             float pdf_h = D * dotNH;
 
             // Jacobian transformation from H space to wi space

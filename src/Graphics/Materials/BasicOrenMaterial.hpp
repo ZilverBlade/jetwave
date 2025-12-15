@@ -1,6 +1,6 @@
 #pragma once
 #include <src/Graphics/BxDFs/OrenNayarBrdf.hpp>
-#include <src/Graphics/BxDFs/MicrofacetBrdf.hpp>
+#include <src/Graphics/BxDFs/GgxMicrofacetBrdf.hpp>
 #include <src/Graphics/IMaterial.hpp>
 
 namespace devs_out_of_bounds {
@@ -10,7 +10,7 @@ namespace material {
         bool Evaluate(const Fragment& input, BSDF* out_bsdf, glm::vec3* out_emission) const {
             if (out_bsdf) {
                 out_bsdf->Add<bxdf::OrenNayarBrdf>(m_albedo, m_diffuse_roughness_angle, input.normal);
-                out_bsdf->Add<bxdf::MicrofacetBrdf>(glm::vec3(0.04f * m_specular), m_specular_roughness, input.normal);
+                out_bsdf->Add<bxdf::GgxMicrofacetBrdf>(glm::vec3(0.04f * m_specular), m_specular_roughness, input.normal);
             }
             return true;
         }
