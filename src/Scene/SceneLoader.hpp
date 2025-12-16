@@ -60,7 +60,7 @@ struct SceneAssets {
 class SceneLoader {
 public:
     static bool Load(const std::string& filepath, Scene& scene, SceneAssets& assets);
-    static bool LoadGltf(const std::string& gltf_file, Scene& scene, SceneAssets& assets);
+    static bool LoadGltf(const std::string& gltf_file, Scene& scene, SceneAssets& assets, const glm::mat4& base_Transform);
 
 private:
     static ITextureView* LoadTexture(const std::string& texturepath, SceneAssets& assets);

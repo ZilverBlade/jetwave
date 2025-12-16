@@ -9,29 +9,33 @@ namespace sampler {
         DOOB_NODISCARD glm::vec4 Sample(const ITextureView* texture, glm::vec2 tex_coord) const override {
             using namespace glm;
 
-            tex_coord = fract(tex_coord);
-            tex_coord.x += static_cast<float>(tex_coord.x < 0.0f);
-            tex_coord.y += static_cast<float>(tex_coord.y < 0.0f);
-            
-            const vec2 res = glm::vec2(texture->GetWidth(), texture->GetHeight());
+            const int width = texture->GetWidth();
+            const int height = texture->GetHeight();
+            const vec2 res = vec2(width, height);
 
             const vec2 pos = tex_coord * res - 0.5f;
-            const vec2 f = fract(pos);
 
-            vec2 pos_top_left = floor(pos);
+            const vec2 pos_top_left = floor(pos);
+            const vec2 f = pos - pos_top_left; // Equivalent to fract(pos) but robust
 
-            vec2 tl_coord = pos_top_left + vec2(0.5f, 0.5f);
-            vec2 tr_coord = pos_top_left + vec2(1.5f, 0.5f);
-            vec2 bl_coord = pos_top_left + vec2(0.5f, 1.5f);
-            vec2 br_coord = pos_top_left + vec2(1.5f, 1.5f);
-            vec4 tl = texture->Read(static_cast<uint32_t>(tl_coord.x), static_cast<uint32_t>(tl_coord.y));
-            vec4 tr = texture->Read(static_cast<uint32_t>(tr_coord.x), static_cast<uint32_t>(tr_coord.y));
-            vec4 bl = texture->Read(static_cast<uint32_t>(bl_coord.x), static_cast<uint32_t>(bl_coord.y));
-            vec4 br = texture->Read(static_cast<uint32_t>(br_coord.x), static_cast<uint32_t>(br_coord.y));
+            auto wrap = [](int x, int size) -> uint32_t { return static_cast<uint32_t>((x % size + size) % size); };
 
-            vec4 ret = mix(mix(tl, tr, f.x), mix(bl, br, f.x), f.y);
+            uint32_t x0 = wrap(static_cast<int>(pos_top_left.x), width);
+            uint32_t y0 = wrap(static_cast<int>(pos_top_left.y), height);
 
-            return {};
+            uint32_t x1 = wrap(static_cast<int>(pos_top_left.x) + 1, width);
+            uint32_t y1 = wrap(static_cast<int>(pos_top_left.y) + 1, height);
+
+            vec4 tl = texture->Read(x0, y0); // Top-Left
+            vec4 tr = texture->Read(x1, y0); // Top-Right
+            vec4 bl = texture->Read(x0, y1); // Bottom-Left
+            vec4 br = texture->Read(x1, y1); // Bottom-Right
+
+            vec4 top_mix = mix(tl, tr, f.x);
+            vec4 bot_mix = mix(bl, br, f.x);
+            vec4 ret = mix(top_mix, bot_mix, f.y);
+
+            return ret;
         }
     };
 } // namespace sampler

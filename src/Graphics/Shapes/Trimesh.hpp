@@ -6,7 +6,8 @@ namespace devs_out_of_bounds {
 namespace shape {
     class Trimesh : public IShape, public MeshInstance {
     public:
-        Trimesh(const Mesh* mesh, const glm::mat4& transform = glm::mat4(1.0f)) : MeshInstance(mesh, transform) {}
+        Trimesh(const Mesh* mesh, const glm::mat4& transform, const std::vector<uint32_t>& indices)
+            : MeshInstance(mesh, transform), m_indices(indices) {}
 
         DOOB_NODISCARD bool Intersect(const Ray& ray, Intersection* out_intersection) const override {
             bool b_hit = false;
@@ -15,10 +16,14 @@ namespace shape {
             float closest_u, closest_v;
             glm::vec3 closest_edge1, closest_edge2;
             float closest_t = INFINITY;
-            size_t i;
-            for (i = 0; i < m_indices.size(); i += 3) {
-                const float edge1 = m_b - m_a;
-                const float edge2 = m_c - m_a;
+            size_t closet_index = 0;
+            for (size_t i = 0; i < m_indices.size(); i += 3) {
+                const glm::vec3 a = m_positions[m_indices[i + 0]];
+                const glm::vec3 b = m_positions[m_indices[i + 1]];
+                const glm::vec3 c = m_positions[m_indices[i + 2]];
+
+                const glm::vec3 edge1 = b - a;
+                const glm::vec3 edge2 = c - a;
 
                 const glm::vec3 pvec = glm::cross(ray.direction, edge2);
 
@@ -30,7 +35,7 @@ namespace shape {
 
                 const float inv_det = 1.0f / det;
 
-                const glm::vec3 tvec = ray.origin - m_a;
+                const glm::vec3 tvec = ray.origin - a;
                 const float u = glm::dot(tvec, pvec) * inv_det;
 
                 if (u < 0.0f || u > 1.0f) {
@@ -56,6 +61,7 @@ namespace shape {
                     closest_edge2 = edge2;
                     closest_u = u;
                     closest_v = v;
+                    closet_index = i;
                 }
 
                 b_hit = true;
@@ -63,10 +69,10 @@ namespace shape {
 
             if (b_hit && out_intersection) {
                 out_intersection->t = closest_t;
-                out_intersection->position = ray.origin + ray.direction * t;
+                out_intersection->position = ray.origin + ray.direction * closest_t;
 
                 out_intersection->barycentric = { closest_u, closest_v };
-                out_intersection->primitive = i / 3;
+                out_intersection->primitive = closet_index / 3;
 
                 out_intersection->flat_normal = glm::normalize(glm::cross(closest_edge1, closest_edge2));
                 out_intersection->b_front_facing = closest_b_backfacing ? 0 : 1;
@@ -103,6 +109,19 @@ namespace shape {
                 .b_front_face = intersection.b_front_facing != 0,
             };
         }
+
+        DOOB_NODISCARD AABB GetAABB() const override {
+            glm::vec3 min = { INFINITY, INFINITY, INFINITY }, max = { -INFINITY, -INFINITY, -INFINITY };
+            for (uint32_t i : m_indices) {
+                min = glm::min(m_positions[i], min);
+                max = glm::max(m_positions[i], max);
+            }
+            return AABB(min, max);
+        }
+
+
+    private:
+        std::vector<uint32_t> m_indices;
     };
 } // namespace shape
 } // namespace devs_out_of_bounds

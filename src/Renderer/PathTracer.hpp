@@ -9,7 +9,7 @@ namespace devs_out_of_bounds {
 struct PathTracerParameters {
     int max_light_bounces = 16;
     bool b_gt7_tonemapper = false;
-    bool b_accumulate = false;
+    bool b_accumulate = true;
     bool b_radiance_clamping = true;
 
     SceneAssets assets;

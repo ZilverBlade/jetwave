@@ -1,0 +1,60 @@
+{
+    "camera": {
+        "position": [ 0.0, 2.0, -9.0 ],
+        "direction": [ 0.0, 0.0, 1.0 ],
+
+        "fieldOfView": 70.0,
+        "aperture": 16.0,
+        "invShutterSpeed": 60,
+        "iso": 100.0,
+        "logExposure": 0.0
+    },
+    "sky": {
+        "skybox": "assets/skyboxes/citrus_orchard_road_puresky_2k.hdr",
+        "lux": 30000.0
+    },
+    "materials": [
+        {
+            "name": "floorMat",
+            "type": "gridMaterial",
+            "parameters": {
+                "gridSize": 1.0
+            }
+        }
+    ],
+    "actors": [
+        {
+            "shape": "plane",
+            "normal": [ 0.0, 1.0, 0.0 ],
+            "position": [ 0.0, -2.0, 0.0 ],
+            "material": "floorMat"
+        }
+    ],
+    "gltf": [
+        {
+            "file": "assets/meshes/Cube/Cube.gltf",
+            "offset": {
+                "position": [ 0.0, 0.0, 0.0 ],
+                "rotationXYZ": [ 0.0, 0.0, 0.0 ],
+                "scale": [ 1.0, 1.0, 1.0 ]
+            }
+        },
+        {
+            "file": "assets/meshes/Duck/Duck.gltf",
+            "offset": {
+                "position": [ 2.0, 0.0, 4.0 ],
+                "rotationXYZ": [ 0.0, 0.0, 0.0 ],
+                "scale": [ 1.0, 1.0, 1.0 ]
+            }
+        }
+    ],
+    "lights": [
+        {
+            "type": "directional",
+            "direction": [ -0.5, -0.7, -1.0 ],
+            "color": [ 1.0, 1.0, 1.0 ],
+            "angle": 2.0,
+            "lux": 110000.0
+        }
+    ]
+}

@@ -372,7 +372,7 @@ glm::vec3 PathTracer::SampleSky(const glm::vec3& direction) const {
 void PathTracer::RebuildAccelerationStructures() {}
 void PathTracer::Cleanup() { m_parameters.assets.Clear(); }
 
-void PathTracer::LoadScene() { SceneLoader::Load("assets/scenes/test-scene.json", *m_scene, m_parameters.assets); }
+void PathTracer::LoadScene() { SceneLoader::Load("assets/scenes/test-gltf.json", *m_scene, m_parameters.assets); }
 void PathTracer::BakeScene() {
     m_drawable_actors.clear();
     m_light_actors.clear();
