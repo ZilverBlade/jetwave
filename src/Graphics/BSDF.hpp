@@ -21,6 +21,7 @@ public:
         m_bxdfs.clear();
         m_bxdf_sizes.clear();
         m_inv_bxdfs = 1.f;
+        m_type = BxDFType::NONE;
     }
     template <BxDFConcept TBxDF, typename... TArgs>
     void Add(TArgs&&... args) {
@@ -39,8 +40,11 @@ public:
         m_bxdfs.push_back(bxdf);
         m_bxdf_mem_ptr += sizeof(TBxDF);
         m_inv_bxdfs = 1.f / static_cast<float>(m_bxdfs.size());
+        m_type |= bxdf->Type();
     }
     bool HasBxDF() const { return m_bxdfs.size() > 0; }
+
+    BxDFType Type() const { return m_type; }
 
     glm::vec3 Evaluate(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const {
         glm::vec3 result(0.0f);
@@ -50,7 +54,7 @@ public:
         return result;
     }
 
-    glm::vec3 Sample_Evaluate(const glm::vec3& wo, glm::vec3& wi, uint32_t& seed, float& pdf) {
+    glm::vec3 Sample_Evaluate(const glm::vec3& wo, glm::vec3& wi, uint32_t& seed, float& pdf, BxDFType* out_type = nullptr) {
         if (m_bxdfs.empty())
             return glm::vec3(0.0f);
 
@@ -58,7 +62,9 @@ public:
         int comp = std::min((int)(r * m_bxdfs.size()), (int)m_bxdfs.size() - 1);
         IBxDF* chosen_lobe = m_bxdfs[comp];
 
-        BxDFType sampled_type = chosen_lobe->Type();
+        if (out_type) {
+            *out_type = chosen_lobe->Type();
+        }
         wi = chosen_lobe->NextSample(wo, seed);
         float VdL = glm::abs(glm::dot(wi, wo)); // ensure wi is used
         glm::vec3 wm = VdL > (1 - std::numeric_limits<float>::epsilon()) ? wo : glm::normalize(wi + wo);
@@ -67,6 +73,7 @@ public:
     }
 
 private:
+    BxDFType m_type = BxDFType::NONE;
     std::vector<IBxDF*> m_bxdfs = {};
     std::vector<size_t> m_bxdf_sizes = {};
     std::vector<char> m_memory = {};

@@ -310,7 +310,7 @@ bool PathTracer::IntersectScene(Ray ray, Intersection* out_intersection, Drawabl
 
 glm::vec3 PathTracer::CalcShadowTransmission(Ray ray) const {
     glm::vec3 throughput(1.0f); // Start with full light
-    const int max_transparent_hits = 8;
+    const int max_transparent_hits = 32;
 
 
     for (int step = 0; step < max_transparent_hits; ++step) {
@@ -339,6 +339,9 @@ glm::vec3 PathTracer::CalcShadowTransmission(Ray ray) const {
         Fragment frag = closest_actor.shape->SampleFragment(closest_hit);
 
         closest_actor.material->Evaluate(frag, &shadow_bsdf, &temp_emission);
+        if ((shadow_bsdf.Type() & BxDFType::TRANSMISSION) == BxDFType::NONE) {
+            return glm::vec3(0.0f);
+        }
 
         // Check forward transmission (wo = -ray, wi = ray)
         // "How much light passes straight through?"

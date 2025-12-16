@@ -6,6 +6,7 @@
 
 namespace devs_out_of_bounds {
 enum class BxDFType : int {
+    NONE = 0,
     DIFFUSE = 1 << 0,
     SPECULAR = 1 << 1,
     TRANSMISSION = 1 << 2,
