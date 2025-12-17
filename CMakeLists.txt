@@ -28,7 +28,7 @@ file(GLOB_RECURSE SRC_MAIN_CPP_SOURCE
       
       
 if (WIN32)
-    add_executable(jetwave WIN32 
+    add_executable(jetwave WIN32
     ${SRC_MAIN_CPP_SOURCE}
     )
 else()

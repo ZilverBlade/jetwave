@@ -9,13 +9,14 @@
 
 namespace devs_out_of_bounds {
 namespace material {
-    enum struct BlendMode : uint8_t {
-        Opaque,
-        Mask,
-        Blend,
-    };
     class GltfMaterial : public IMaterial {
     public:
+        enum struct BlendMode : uint8_t {
+            Opaque,
+            Mask,
+            Blend,
+        };
+
         void Evaluate(const Fragment& input, BSDF* out_bsdf, glm::vec3* out_emission) const override {
             using namespace glm;
             using glm::vec3;
@@ -28,8 +29,19 @@ namespace material {
             }
 
             vec4 base_color = base_color_factor;
+            // FIXME: srgb
+            base_color.r = pow(base_color.r, 2.2f);
+            base_color.g = pow(base_color.g, 2.2f);
+            base_color.b = pow(base_color.b, 2.2f);
             if (sampler_state && base_color_texture) {
-                base_color *= sampler_state->Sample(base_color_texture, input.uv);
+                vec4 col = sampler_state->Sample(base_color_texture, input.uv);
+
+                // FIXME: srgb
+                col.r = pow(col.r, 2.2f);
+                col.g = pow(col.g, 2.2f);
+                col.b = pow(col.b, 2.2f);
+
+                base_color *= col;
             }
             if (blend_mode == BlendMode::Mask) {
                 if (base_color.a < alpha_cutoff) {
@@ -39,7 +51,8 @@ namespace material {
             } else if (blend_mode == BlendMode::Blend) {
                 out_bsdf->Add<bxdf::PassthroughBtdf>(glm::vec3(1, 1, 1), base_color.a);
             }
-            *out_emission = emissive_factor;
+
+            glm::vec3 emission = pow(emissive_factor, vec3(2.2f)); // FIXME: srgb
 
             glm::vec3 world_normal = input.normal;
             if (!input.b_front_face) {
@@ -51,28 +64,38 @@ namespace material {
                     vec4 res = sampler_state->Sample(metallic_roughness_texture, input.uv);
                     metal *= res.b;
                     rough *= res.g;
+                    rough = max(rough, 0.02f);
                 }
                 if (emissive_texture) {
                     vec3 res = sampler_state->Sample(emissive_texture, input.uv);
-                    *out_emission *= res;
+                    emission *= pow(res, vec3(2.2f)); // FIXME: srgb
                 }
-                if (normal_texture) {
+                if (normal_texture && glm::dot(input.tangent, input.tangent) > std::numeric_limits<float>::epsilon()) {
                     vec3 nor = sampler_state->Sample(normal_texture, input.uv) * 2.0f - 1.0f;
-                    nor.x *= normal_strength;
-                    nor.y *= normal_strength;
 
-                    vec3 bitangent = cross(input.normal, input.tangent); 
-                    mat3 TBN = mat3(input.tangent, bitangent, input.normal);
+                    // Check for valid tangent to avoid NaNs
+                    if (glm::dot(input.tangent, input.tangent) > 1e-6f) {
+                        vec3 T = normalize(input.tangent);
+                        vec3 N = input.flat_normal; 
 
-                    world_normal = normalize(TBN * nor);
+                        T = normalize(T - N * dot(N, T));
+
+                        vec3 B = cross(N, T);
+
+                        mat3 TBN = mat3(T, B, N);
+
+                        vec3 map_normal = normalize(vec3(vec2(nor) * normal_strength, nor.z));
+                        world_normal = normalize(TBN * map_normal);
+                    }
                 } else {
                     world_normal = normalize(input.normal);
                 }
             }
+            // FIXME: srgb
+            *out_emission = emission * emissive_intensity;
 
             out_bsdf->Add<bxdf::LambertBrdf>(vec3(base_color) * (1.0f - metal), world_normal);
-            out_bsdf->Add<bxdf::GgxMicrofacetBrdf>(
-                mix(glm::vec3(0.04f), vec3(base_color), metal), rough, world_normal);
+            out_bsdf->Add<bxdf::GgxMicrofacetBrdf>(mix(glm::vec3(0.04f), vec3(base_color), metal), rough, world_normal);
         }
 
         ISamplerState* sampler_state = {};
@@ -89,11 +112,12 @@ namespace material {
 
         ITextureView* emissive_texture = {};
         glm::vec3 emissive_factor = glm::vec3{ 0.0f };
+        float emissive_intensity = 100000.0f;
 
         BlendMode blend_mode = BlendMode::Opaque;
         float alpha_cutoff = 0.5f;
 
-        bool b_double_sided = true;
+        bool b_double_sided = false;
     };
 } // namespace material
 } // namespace devs_out_of_bounds

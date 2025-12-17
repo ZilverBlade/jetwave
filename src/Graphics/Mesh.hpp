@@ -58,8 +58,8 @@ public:
 
 
     DOOB_NODISCARD Fragment SampleFragment(const Intersection& intersection) const {
-        float v = intersection.barycentric.x;
-        float w = intersection.barycentric.y;
+        float v = intersection.barycentric.s;
+        float w = intersection.barycentric.t;
         float u = 1.0f - v - w;
 
         uint32_t i, j, k;
@@ -70,6 +70,7 @@ public:
         return {
             .position = intersection.position, // u * m_positions[i] + v * m_positions[j] + w * m_positions[k],
             .normal = u * m_attributes[i].normal + v * m_attributes[j].normal + w * m_attributes[k].normal,
+            .flat_normal = intersection.flat_normal,
             .tangent = u * m_attributes[i].tangent + v * m_attributes[j].tangent + w * m_attributes[k].tangent,
             .uv = u * m_attributes[i].uv + v * m_attributes[j].uv + w * m_attributes[k].uv,
 

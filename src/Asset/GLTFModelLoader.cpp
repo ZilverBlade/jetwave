@@ -267,7 +267,7 @@ namespace model_loader {
             material.metallicRoughnessTexture = castOptionalTexture(gltfMaterial.pbrData.metallicRoughnessTexture);
             material.metallicFactor = gltfMaterial.pbrData.metallicFactor;
             material.roughnessFactor = gltfMaterial.pbrData.roughnessFactor;
-
+          
             material.normalTexture = castOptionalTexture(gltfMaterial.normalTexture);
 
             material.emissiveTexture = castOptionalTexture(gltfMaterial.emissiveTexture);
@@ -552,12 +552,12 @@ namespace model_loader {
             }
         }
 
-        std::println("positions count: {}", meshData.positions.size());
-        std::println("normals count: {}", meshData.normals.size());
-        std::println("tangents count: {}", meshData.tangents.size());
-        std::println(
-            "uv sets: {} uv count: {}", meshData.uvs.size(), meshData.uvs.size() != 0 ? meshData.uvs[0].size() : 0);
-        std::println("index count: {}", meshData.indices.size());
+       // std::println("positions count: {}", meshData.positions.size());
+       // std::println("normals count: {}", meshData.normals.size());
+       // std::println("tangents count: {}", meshData.tangents.size());
+       // std::println(
+       //     "uv sets: {} uv count: {}", meshData.uvs.size(), meshData.uvs.size() != 0 ? meshData.uvs[0].size() : 0);
+       // std::println("index count: {}", meshData.indices.size());
 
         return meshData;
     }

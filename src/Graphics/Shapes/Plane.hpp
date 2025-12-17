@@ -36,6 +36,7 @@ namespace shape {
             return {
                 .position = intersection.position,
                 .normal = m_normal,
+                .flat_normal = intersection.flat_normal,
                 .tangent = {},
                 .uv = {},
             };

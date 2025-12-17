@@ -10,16 +10,17 @@
 #include <src/Asset/IModelLoader.hpp>
 
 #include <src/Graphics/Shapes/Box.hpp>
+#include <src/Graphics/Shapes/Bvh.hpp>
 #include <src/Graphics/Shapes/Plane.hpp>
 #include <src/Graphics/Shapes/Sphere.hpp>
 #include <src/Graphics/Shapes/Triangle.hpp>
-#include <src/Graphics/Shapes/Bvh.hpp>
 
 #include <src/Graphics/Lights/AreaLight.hpp>
 #include <src/Graphics/Lights/DirectionalLight.hpp>
 #include <src/Graphics/Lights/PointLight.hpp>
 
 #include <src/Graphics/SamplerStates/LinearWrapSampler.hpp>
+#include <src/Graphics/TextureViews/Rgba8SrgbTextureView.hpp>
 #include <src/Graphics/TextureViews/Rgba8TextureView.hpp>
 #include <src/Graphics/TextureViews/Rgbe9TextureView.hpp>
 
@@ -363,6 +364,7 @@ bool SceneLoader::LoadGltf(
         };
         assets.misc_data.push_back(std::make_unique<GltfTexture>(std::move(result)));
         auto* t = reinterpret_cast<GltfTexture*>(assets.misc_data.back().get());
+        // TODO: use srgb if this is a colour image
         assets.textures.push_back(std::make_unique<texture_view::Rgba8TextureView>(
             t->m_data.data.data(), t->m_data.width, t->m_data.height, t->m_data.width * 4));
         auto* tv = assets.textures.back().get();
@@ -380,11 +382,24 @@ bool SceneLoader::LoadGltf(
         mat.metallic_roughness_texture =
             material.metallicRoughnessTexture ? gltf_texture_indices[*material.metallicRoughnessTexture] : nullptr;
 
-        mat.emissive_factor = material.emissiveFactor * material.emissiveStrength * 10000.0f;
+        mat.emissive_factor = material.emissiveFactor;
+        mat.emissive_intensity = material.emissiveStrength * 100000.0f;
         mat.emissive_texture = material.emissiveTexture ? gltf_texture_indices[*material.emissiveTexture] : nullptr;
         mat.normal_strength = 1.0f;
         mat.normal_texture = material.normalTexture ? gltf_texture_indices[*material.normalTexture] : nullptr;
-
+        mat.b_double_sided = material.doubleSided;
+        mat.alpha_cutoff = material.alphaCutoff;
+        switch (material.alphaMode) {
+        case model_loader::AlphaMode::Opaque:
+            mat.blend_mode = material::GltfMaterial::BlendMode::Opaque;
+            break;
+        case model_loader::AlphaMode::Mask:
+            mat.blend_mode = material::GltfMaterial::BlendMode::Mask;
+            break;
+        case model_loader::AlphaMode::Blend:
+            mat.blend_mode = material::GltfMaterial::BlendMode::Blend;
+            break;
+        }
         class SamplerDeleter : public IData {
         public:
             SamplerDeleter(ISamplerState* s) : m_s(s) {}
