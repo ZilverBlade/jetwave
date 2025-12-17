@@ -44,6 +44,7 @@ namespace shape {
                 return false;
 
             if (out_intersection) {
+                out_intersection->num_intersections = 1;
                 const glm::vec3 hit_pos = ray.origin + ray.direction * t_hit;
 
                 out_intersection->t = t_hit;

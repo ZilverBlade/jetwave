@@ -46,6 +46,7 @@ namespace shape {
             }
 
             if (out_intersection) {
+                out_intersection->num_intersections = 1;
                 out_intersection->t = t;
                 out_intersection->position = ray.origin + ray.direction * t;
 

@@ -29,6 +29,9 @@ public:
         m_positions.reserve(mesh->GetVertices().size());
         m_attributes.reserve(mesh->GetVertices().size());
 
+        m_index_ptr = mesh->GetIndices().data();
+        m_num_indices = mesh->GetIndices().size();
+
         for (int i = 0; i < mesh->GetVertices().size(); ++i) {
             glm::vec4 pos_h = glm::vec4(mesh->GetVertices()[i].position, 1.0f);
             m_positions.push_back(glm::vec3(transform * pos_h));
@@ -43,6 +46,18 @@ public:
         }
     }
 
+    DOOB_NODISCARD AABB GetPrimitiveAabb(uint32_t primitive) const {
+        glm::vec3 a = m_positions[m_index_ptr[primitive * 3 + 0]];
+        glm::vec3 b = m_positions[m_index_ptr[primitive * 3 + 1]];
+        glm::vec3 c = m_positions[m_index_ptr[primitive * 3 + 2]];
+        AABB aabb;
+        aabb.min = glm::min(a, glm::min(b, c));
+        aabb.max = glm::max(a, glm::max(b, c));
+        return aabb;
+    }
+
+    const uint32_t* m_index_ptr;
+    uint32_t m_num_indices;
     std::vector<glm::vec3> m_positions;
     std::vector<VertexAttributes> m_attributes;
 };

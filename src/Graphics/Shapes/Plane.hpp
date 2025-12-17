@@ -22,6 +22,7 @@ namespace shape {
                 return false;
             }
             if (out_intersection) {
+                out_intersection->num_intersections = 1;
                 out_intersection->position = ray.origin + ray.direction * t;
                 out_intersection->t = t;
                 out_intersection->flat_normal = m_normal;

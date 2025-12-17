@@ -13,7 +13,7 @@
 #include <src/Graphics/Shapes/Plane.hpp>
 #include <src/Graphics/Shapes/Sphere.hpp>
 #include <src/Graphics/Shapes/Triangle.hpp>
-#include <src/Graphics/Shapes/Trimesh.hpp>
+#include <src/Graphics/Shapes/Bvh.hpp>
 
 #include <src/Graphics/Lights/AreaLight.hpp>
 #include <src/Graphics/Lights/DirectionalLight.hpp>
@@ -326,8 +326,9 @@ bool SceneLoader::LoadGltf(
     model_loader::GLTFModelLoader loader;
     model_loader::ModelData data = loader.Load(gltf_file);
 
-    // gltf_meshes MEMORY LEAK TODO:
+    // gltf_meshes gltf_mesh_instances MEMORY LEAK TODO:
     std::vector<std::vector<Mesh*>> gltf_meshes = {};
+    std::vector<MeshInstance*> gltf_mesh_instances = {};
 
     std::vector<ITextureView*> gltf_texture_indices = {};
     std::vector<IMaterial*> gltf_material_indices = {};
@@ -422,7 +423,6 @@ bool SceneLoader::LoadGltf(
             }
 
             if (node.meshIndex) {
-
                 int i = 0;
                 for (auto w : data.meshGroups) {
                     if (i == *node.meshIndex) {
@@ -430,8 +430,10 @@ bool SceneLoader::LoadGltf(
                             Mesh* mesh = gltf_meshes[i][z.meshIndex];
                             IMaterial* material = gltf_material_indices[*z.materialIndex];
 
-                            assets.shapes.push_back(
-                                std::make_unique<shape::Trimesh>(mesh, transform, mesh->GetIndices()));
+                            MeshInstance* mesh_instance = new MeshInstance(mesh, transform);
+                            gltf_mesh_instances.push_back(mesh_instance);
+
+                            assets.shapes.push_back(std::make_unique<shape::BVH>(mesh_instance));
 
                             ActorId id = scene.NewDrawableActor(assets.shapes.back().get(), material);
                         }

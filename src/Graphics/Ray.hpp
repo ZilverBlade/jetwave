@@ -8,6 +8,7 @@ struct Intersection {
     uint32_t primitive = 0;
     uint32_t b_front_facing = 0;
     glm::vec3 flat_normal = {};
+    uint32_t num_intersections = 0;
 };
 struct Ray {
     glm::vec3 origin = {};

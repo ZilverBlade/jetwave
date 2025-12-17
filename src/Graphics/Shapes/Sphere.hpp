@@ -37,6 +37,8 @@ namespace shape {
 
             if (out_intersection) {
                 glm::vec3 target = ray.direction * t;
+
+                out_intersection->num_intersections = 1;
                 out_intersection->position = ray.origin + target;
                 out_intersection->t = t;
                 out_intersection->barycentric = { 0.0f, 0.0f }; // Spheres don't use barycentrics
