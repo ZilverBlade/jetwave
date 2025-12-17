@@ -36,6 +36,8 @@ public:
         }
         m_bxdf_sizes.push_back(sizeof(TBxDF));
         TBxDF* bxdf = reinterpret_cast<TBxDF*>(m_memory.data() + m_bxdf_mem_ptr);
+
+        
         new (bxdf) TBxDF(std::forward<TArgs>(args)...);
         m_bxdfs.push_back(bxdf);
         m_bxdf_mem_ptr += sizeof(TBxDF);
@@ -73,6 +75,7 @@ public:
     }
 
 private:
+
     BxDFType m_type = BxDFType::NONE;
     std::vector<IBxDF*> m_bxdfs = {};
     std::vector<size_t> m_bxdf_sizes = {};
