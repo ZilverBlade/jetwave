@@ -46,6 +46,22 @@
                 "rotationXYZ": [ 0.0, 0.0, 0.0 ],
                 "scale": [ 1.0, 1.0, 1.0 ]
             }
+        },
+        {
+            "file": "assets/meshes/DragonAttenuation/DragonAttenuation.gltf",
+            "offset": {
+                "position": [ -2.0, 4.0, 8.0 ],
+                "rotationXYZ": [ 0.0, 0.0, 0.0 ],
+                "scale": [ 1.0, 1.0, 1.0 ]
+            }
+        },
+        {
+            "file": "assets/meshes/DamagedHelmet/DamagedHelmet.gltf",
+            "offset": {
+                "position": [ 4.0, 4.0, -3.0 ],
+                "rotationXYZ": [ 0.0, 0.0, 0.0 ],
+                "scale": [ 1.0, 1.0, 1.0 ]
+            }
         }
     ],
     "lights": [

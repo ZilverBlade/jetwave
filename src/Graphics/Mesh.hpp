@@ -58,9 +58,9 @@ public:
 
 
     DOOB_NODISCARD Fragment SampleFragment(const Intersection& intersection) const {
-        float u = intersection.barycentric.x;
-        float v = intersection.barycentric.y;
-        float w = 1.0f - u - v;
+        float v = intersection.barycentric.x;
+        float w = intersection.barycentric.y;
+        float u = 1.0f - v - w;
 
         uint32_t i, j, k;
         i = m_index_ptr[intersection.primitive * 3 + 0];

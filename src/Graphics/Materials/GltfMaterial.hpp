@@ -42,11 +42,14 @@ namespace material {
             *out_emission = emissive_factor;
 
             glm::vec3 world_normal = input.normal;
+            if (!input.b_front_face) {
+                world_normal = -world_normal;
+            }
             float rough = roughness_factor, metal = metallic_factor;
             if (sampler_state) {
                 if (metallic_roughness_texture) {
-                    vec2 res = sampler_state->Sample(metallic_roughness_texture, input.uv);
-                    metal *= res.r;
+                    vec4 res = sampler_state->Sample(metallic_roughness_texture, input.uv);
+                    metal *= res.b;
                     rough *= res.g;
                 }
                 if (emissive_texture) {
@@ -54,23 +57,22 @@ namespace material {
                     *out_emission *= res;
                 }
                 if (normal_texture) {
-                    vec3 nor = sampler_state->Sample(emissive_texture, input.uv) * 2.0f - 1.0f;
+                    vec3 nor = sampler_state->Sample(normal_texture, input.uv) * 2.0f - 1.0f;
                     nor.x *= normal_strength;
                     nor.y *= normal_strength;
 
-                    const vec3 bitangent = cross(input.tangent, input.normal);
-
-                    mat3 TBN = { input.tangent, bitangent, input.normal };
+                    vec3 bitangent = cross(input.normal, input.tangent); 
+                    mat3 TBN = mat3(input.tangent, bitangent, input.normal);
 
                     world_normal = normalize(TBN * nor);
                 } else {
-                    world_normal = input.normal;
+                    world_normal = normalize(input.normal);
                 }
             }
 
-            out_bsdf->Add<bxdf::LambertBrdf>(glm::vec3(base_color) * (1.0f - metallic_factor), world_normal);
+            out_bsdf->Add<bxdf::LambertBrdf>(vec3(base_color) * (1.0f - metal), world_normal);
             out_bsdf->Add<bxdf::GgxMicrofacetBrdf>(
-                glm::mix(glm::vec3(0.04f), glm::vec3(base_color), metallic_factor), roughness_factor, world_normal);
+                mix(glm::vec3(0.04f), vec3(base_color), metal), rough, world_normal);
         }
 
         ISamplerState* sampler_state = {};
@@ -91,7 +93,7 @@ namespace material {
         BlendMode blend_mode = BlendMode::Opaque;
         float alpha_cutoff = 0.5f;
 
-        bool b_double_sided = false;
+        bool b_double_sided = true;
     };
 } // namespace material
 } // namespace devs_out_of_bounds
