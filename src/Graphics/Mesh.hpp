@@ -68,7 +68,7 @@ public:
         k = m_index_ptr[intersection.primitive * 3 + 2];
 
         return {
-            .position = u * m_positions[i] + v * m_positions[j] + w * m_positions[k],
+            .position = intersection.position, // u * m_positions[i] + v * m_positions[j] + w * m_positions[k],
             .normal = u * m_attributes[i].normal + v * m_attributes[j].normal + w * m_attributes[k].normal,
             .tangent = u * m_attributes[i].tangent + v * m_attributes[j].tangent + w * m_attributes[k].tangent,
             .uv = u * m_attributes[i].uv + v * m_attributes[j].uv + w * m_attributes[k].uv,

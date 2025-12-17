@@ -15,7 +15,7 @@ struct AABB {
         };
     }
 
-    DOOB_NODISCARD bool RayIntersects(const Ray& ray, float* out_in_t, float* out_out_t) const {
+    DOOB_NODISCARD bool RayIntersects(const Ray& ray) const {
         const glm::vec3 inv_dir = 1.0f / (ray.direction + glm::sign(ray.direction) * 1e-9f);
 
         const glm::vec3 t_min_xyz = (min - ray.origin) * inv_dir;
@@ -49,12 +49,8 @@ struct AABB {
 
         if (t_hit < ray.t_min)
             return false;
-        if (out_out_t) {
-            *out_out_t = std::max(t_out, t_in);
-        }
-        if (out_in_t) {
-            *out_in_t = std::min(t_out, t_in);
-        }
+
+        return true;
     }
 };
 } // namespace devs_out_of_bounds

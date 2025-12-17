@@ -9,7 +9,7 @@ namespace shape {
         Trimesh(const MeshInstance* mesh_instance, const std::vector<uint32_t>& primitives) {
             m_primitive_ptr = new uint32_t[primitives.size()];
             m_primitive_count = static_cast<uint32_t>(primitives.size());
-            for (size_t i = 0; i < primitives.size(); ++i) {
+            for (uint32_t i = 0; i < m_primitive_count; ++i) {
                 m_primitive_ptr[i] = primitives[i];
             }
             m_position_ptr = mesh_instance->m_positions.data();
@@ -44,7 +44,7 @@ namespace shape {
             return *this;
         }
 
-        DOOB_NODISCARD DOOB_FORCEINLINE bool Intersect(const Ray& ray, Intersection* out_intersection) const {
+        DOOB_NODISCARD bool Intersect(const Ray& ray, Intersection* out_intersection) const {
             bool b_hit = false;
 
             bool closest_b_backfacing = false;
@@ -124,6 +124,8 @@ namespace shape {
             return b_hit;
         }
 
+
+        DOOB_NODISCARD uint32_t GetPrimitiveCount() const { return m_primitive_count; }
     private:
         const glm::vec3* m_position_ptr = nullptr;
         const uint32_t* m_index_ptr = nullptr;

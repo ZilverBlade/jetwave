@@ -14,6 +14,11 @@
 #include <functional>
 #include <mutex>
 
+#ifdef DOOB_PLATFORM_FAMILY_WINDOWS
+#define WIN32_LEAN_AND_MEAN 1
+#define NOMINMAX 1
+#include <Windows.h>
+#endif
 
 /* We will use this renderer to draw into this window every frame. */
 static SDL_Window* g_window = nullptr;
@@ -91,7 +96,7 @@ static void InitThreads() {
 
 // 4. Launch Threads
 // Only launch as many threads as you have cores.
-#ifdef NDEBUG
+#if defined(NDEBUG)
     unsigned int core_count = std::thread::hardware_concurrency();
 #else
     // make it easier to debug!
@@ -151,6 +156,15 @@ static void InitThreads() {
 
 /* This function runs once at startup. */
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
+#if !defined(NDEBUG) 
+#ifdef DOOB_PLATFORM_FAMILY_WINDOWS
+    AllocConsole();
+    freopen("conin$", "r", stdin);
+    freopen("conout$", "w", stdout);
+    freopen("conout$", "w", stderr);
+#endif // DOOB_PLATFORM_FAMILY_WINDOWS
+#endif //  !defined(NDEBUG)
+
     SDL_SetAppMetadata("Example Renderer Clear", "1.0", "com.example.g_renderer-clear");
 
     if (!SDL_Init(SDL_INIT_VIDEO)) {
