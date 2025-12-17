@@ -13,6 +13,7 @@ namespace material {
                 if ((int(cell.x + cell.y + cell.z) % 2) == 1) {
                     glm::vec3 nor = glm::normalize(input.normal);
                     out_bsdf->Add<bxdf::LambertBrdf>(m_grid_foreground, nor);
+                    out_bsdf->Add<bxdf::GgxMicrofacetBrdf>(glm::vec3(0.04f), 0.8f, nor);
                 } else {
                     out_bsdf->Add<bxdf::PassthroughBtdf>(glm::vec3(1, 1, 1));
                 }

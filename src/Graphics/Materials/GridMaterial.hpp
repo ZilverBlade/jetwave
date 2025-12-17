@@ -15,6 +15,7 @@ namespace material {
                 bool b_foreground = (int(cell.x + cell.y + cell.z) % 2) != 0;
                 out_bsdf->Add<bxdf::LambertBrdf>(
                     b_foreground ? m_grid_foreground : m_grid_background, nor);
+                out_bsdf->Add<bxdf::GgxMicrofacetBrdf>(glm::vec3(0.04f), 0.8f, nor);
             }
         }
 

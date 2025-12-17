@@ -45,7 +45,6 @@ public:
         }
     }
 
-    std::vector<uint32_t> m_indices;
     std::vector<glm::vec3> m_positions;
     std::vector<VertexAttributes> m_attributes;
 };

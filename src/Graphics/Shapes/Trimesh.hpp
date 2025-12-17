@@ -103,6 +103,8 @@ namespace shape {
                 .b_front_face = intersection.b_front_facing != 0,
             };
         }
+
+        std::vector<uint32_t> m_indices;
     };
 } // namespace shape
 } // namespace devs_out_of_bounds
