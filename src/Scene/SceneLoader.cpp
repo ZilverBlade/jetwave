@@ -9,14 +9,18 @@
 #include <src/Asset/GLTFModelLoader.hpp>
 #include <src/Asset/IModelLoader.hpp>
 
+#include <src/Graphics/Shapes/Box.hpp>
 #include <src/Graphics/Shapes/Plane.hpp>
 #include <src/Graphics/Shapes/Sphere.hpp>
 #include <src/Graphics/Shapes/Triangle.hpp>
+#include <src/Graphics/Shapes/Trimesh.hpp>
 
 #include <src/Graphics/Lights/AreaLight.hpp>
 #include <src/Graphics/Lights/DirectionalLight.hpp>
 #include <src/Graphics/Lights/PointLight.hpp>
 
+#include <src/Graphics/SamplerStates/LinearWrapSampler.hpp>
+#include <src/Graphics/TextureViews/Rgba8TextureView.hpp>
 #include <src/Graphics/TextureViews/Rgbe9TextureView.hpp>
 
 #include <src/Graphics/Materials/BasicMaterial.hpp>
@@ -28,11 +32,14 @@
 #include <src/Graphics/Materials/GridMaterial.hpp>
 #include <src/Graphics/Materials/MetallicMaterial.hpp>
 
+#include <src/Graphics/Materials/GltfMaterial.hpp>
+
 #ifdef _WIN32
 #include <Windows.h>
 #else
 #define MessageBoxA(...)
 #endif
+#include <deque>
 
 using json = nlohmann::json;
 
@@ -222,6 +229,13 @@ bool SceneLoader::Load(const std::string& filepath, Scene& scene, SceneAssets& a
                 auto plane = std::make_unique<shape::Plane>(normal, position);
                 shape_ptr = plane.get();
                 assets.shapes.push_back(std::move(plane));
+            } else if (shape_type == "box") {
+                glm::vec3 extent = j_actor.value("extent", glm::vec3(1, 1, 1));
+                glm::vec3 position = j_actor.value("position", glm::vec3(0, 0, 0));
+
+                auto box = std::make_unique<shape::Box>(position, extent);
+                shape_ptr = box.get();
+                assets.shapes.push_back(std::move(box));
             } else if (shape_type == "triangle") {
                 glm::vec3 a = j_actor.value("a", glm::vec3(0, 0, 0));
                 glm::vec3 b = j_actor.value("b", glm::vec3(0, 0, 0));
@@ -248,6 +262,23 @@ bool SceneLoader::Load(const std::string& filepath, Scene& scene, SceneAssets& a
             }
         }
     }
+
+
+    if (j.contains("gltf")) {
+        for (const auto& j_gltf : j["gltf"]) {
+            std::string path = j_gltf.value("file", "");
+            glm::mat4 transform(1.f);
+            if (j_gltf.contains("offset")) {
+                const auto& j_off = j_gltf["offset"];
+                glm::vec3 position = j_off.value("position", glm::vec3(0, 0, 0));
+                glm::vec3 rotationXYZ = j_off.value("position", glm::vec3(0, 0, 0));
+                glm::vec3 scale = j_off.value("scale", glm::vec3(1, 1, 1));
+                transform = glm::translate(glm::scale(glm::mat4(1), scale), position);
+            }
+            LoadGltf(path, scene, assets, transform);
+        }
+    }
+
 
     if (j.contains("lights")) {
         for (const auto& j_light : j["lights"]) {
@@ -290,11 +321,128 @@ bool SceneLoader::Load(const std::string& filepath, Scene& scene, SceneAssets& a
     return true;
 }
 
-bool SceneLoader::LoadGltf(const std::string& gltf_file, Scene& scene, SceneAssets& assets) {
+bool SceneLoader::LoadGltf(
+    const std::string& gltf_file, Scene& scene, SceneAssets& assets, const glm::mat4& base_Transform) {
     model_loader::GLTFModelLoader loader;
     model_loader::ModelData data = loader.Load(gltf_file);
-    
-    return false;
+
+    // gltf_meshes MEMORY LEAK TODO:
+    std::vector<std::vector<Mesh*>> gltf_meshes = {};
+
+    std::vector<ITextureView*> gltf_texture_indices = {};
+    std::vector<IMaterial*> gltf_material_indices = {};
+
+    for (auto& mesh_group : data.meshGroups) {
+        std::vector<Mesh*> mesh_shapes = {};
+        for (auto& mesh : mesh_group.meshes) {
+            model_loader::MeshData result = loader.ReadMeshData(data, mesh);
+
+            Mesh* m = new Mesh();
+            m->m_indices = result.indices;
+            for (int i = 0; i < result.positions.size(); ++i) {
+                m->m_vertices.push_back(Vertex{
+                    .position = result.positions[i],
+                    .normal = result.normals.empty() ? glm::vec3{} : result.normals[i],
+                    .tangent = result.tangents.empty() ? glm::vec3{} : result.tangents[i],
+                    .uv = (result.uvs.empty() || result.uvs[0].empty()) ? glm::vec2{} : result.uvs[0][i],
+                });
+            }
+            mesh_shapes.push_back(m);
+        }
+        gltf_meshes.push_back(mesh_shapes);
+    }
+
+    for (auto& image : data.images) {
+        model_loader::ImageData result = loader.ReadImageData(data, image);
+        class GltfTexture : public IData {
+        public:
+            GltfTexture(model_loader::ImageData&& data) : m_data(data) {}
+            ~GltfTexture() override {}
+            model_loader::ImageData m_data;
+        };
+        assets.misc_data.push_back(std::make_unique<GltfTexture>(std::move(result)));
+        auto* t = reinterpret_cast<GltfTexture*>(assets.misc_data.back().get());
+        assets.textures.push_back(std::make_unique<texture_view::Rgba8TextureView>(
+            t->m_data.data.data(), t->m_data.width, t->m_data.height, t->m_data.width * 4));
+        auto* tv = assets.textures.back().get();
+        gltf_texture_indices.push_back(tv);
+    }
+
+
+    for (auto& material : data.materials) {
+        material::GltfMaterial mat;
+        mat.base_color_factor = material.albedoColor;
+        mat.base_color_texture = material.albedoTexture ? gltf_texture_indices[*material.albedoTexture] : nullptr;
+
+        mat.roughness_factor = material.roughnessFactor;
+        mat.metallic_factor = material.metallicFactor;
+        mat.metallic_roughness_texture =
+            material.metallicRoughnessTexture ? gltf_texture_indices[*material.metallicRoughnessTexture] : nullptr;
+
+        mat.emissive_factor = material.emissiveFactor * material.emissiveStrength * 10000.0f;
+        mat.emissive_texture = material.emissiveTexture ? gltf_texture_indices[*material.emissiveTexture] : nullptr;
+        mat.normal_strength = 1.0f;
+        mat.normal_texture = material.normalTexture ? gltf_texture_indices[*material.normalTexture] : nullptr;
+
+        class SamplerDeleter : public IData {
+        public:
+            SamplerDeleter(ISamplerState* s) : m_s(s) {}
+            ~SamplerDeleter() override { delete m_s; }
+            ISamplerState* m_s;
+        };
+
+        mat.sampler_state = new sampler::LinearWrapSampler;
+        assets.misc_data.push_back(std::make_unique<SamplerDeleter>(mat.sampler_state));
+        assets.materials.push_back(std::make_unique<material::GltfMaterial>(mat));
+        gltf_material_indices.push_back(assets.materials.back().get());
+    }
+
+    for (auto& s : data.scenes) {
+        std::deque<int> remaining_children;
+        remaining_children.append_range(s.nodeIndices);
+        std::deque<glm::mat4> remaining_children_transforms = {};
+        for (auto x : remaining_children) {
+            remaining_children_transforms.push_back(base_Transform);
+        }
+        while (!remaining_children.empty()) {
+            int child = remaining_children.front();
+            remaining_children.pop_front();
+            glm::mat4 transform = remaining_children_transforms.front();
+            remaining_children_transforms.pop_front();
+
+            const model_loader::Node& node = data.nodes[child];
+
+            transform *=
+                glm::translate(glm::toMat4(node.transform.rotation) * glm::scale(glm::mat4(1.f), node.transform.scale),
+                    node.transform.position);
+
+            remaining_children.append_range(node.children);
+            for (auto x : node.children) {
+                remaining_children_transforms.push_back(transform);
+            }
+
+            if (node.meshIndex) {
+
+                int i = 0;
+                for (auto w : data.meshGroups) {
+                    if (i == *node.meshIndex) {
+                        for (auto z : w.meshes) {
+                            Mesh* mesh = gltf_meshes[i][z.meshIndex];
+                            IMaterial* material = gltf_material_indices[*z.materialIndex];
+
+                            assets.shapes.push_back(
+                                std::make_unique<shape::Trimesh>(mesh, transform, mesh->GetIndices()));
+
+                            ActorId id = scene.NewDrawableActor(assets.shapes.back().get(), material);
+                        }
+                        break;
+                    }
+                    ++i;
+                }
+            }
+        }
+    }
+    return true;
 }
 
 ITextureView* SceneLoader::LoadTexture(const std::string& texturepath, SceneAssets& assets) {

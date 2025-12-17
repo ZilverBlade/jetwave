@@ -32,8 +32,8 @@ namespace model_loader {
         static constexpr fastgltf::Extensions supportedExtensions = {};
         fastgltf::Parser parser(supportedExtensions);
 
-        static constexpr fastgltf::Options gltfOptions = {};
-        // static constexpr fastgltf::Options gltfOptions = fastgltf::Options::LoadExternalBuffers;
+        // static constexpr fastgltf::Options gltfOptions = {};
+        static constexpr fastgltf::Options gltfOptions = fastgltf::Options::LoadExternalBuffers;
 
         fastgltf::Asset asset;
         {

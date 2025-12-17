@@ -105,6 +105,12 @@
             "material": "redPlastic"
         },
         {
+            "shape": "box",
+            "extent": [ 3.0, 1.0, 3.0 ],
+            "position": [ 1.0, 8.0, -4.0 ],
+            "material": "redPlastic"
+        },
+        {
             "shape": "sphere",
             "radius": 1.0,
             "center": [ 10.0, 1.0, 0.0 ],
