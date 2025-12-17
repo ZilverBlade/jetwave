@@ -56,6 +56,27 @@ public:
         return aabb;
     }
 
+
+    DOOB_NODISCARD Fragment SampleFragment(const Intersection& intersection) const {
+        float u = intersection.barycentric.x;
+        float v = intersection.barycentric.y;
+        float w = 1.0f - u - v;
+
+        uint32_t i, j, k;
+        i = m_index_ptr[intersection.primitive * 3 + 0];
+        j = m_index_ptr[intersection.primitive * 3 + 1];
+        k = m_index_ptr[intersection.primitive * 3 + 2];
+
+        return {
+            .position = u * m_positions[i] + v * m_positions[j] + w * m_positions[k],
+            .normal = u * m_attributes[i].normal + v * m_attributes[j].normal + w * m_attributes[k].normal,
+            .tangent = u * m_attributes[i].tangent + v * m_attributes[j].tangent + w * m_attributes[k].tangent,
+            .uv = u * m_attributes[i].uv + v * m_attributes[j].uv + w * m_attributes[k].uv,
+
+            .b_front_face = intersection.b_front_facing != 0,
+        };
+    }
+
     const uint32_t* m_index_ptr;
     uint32_t m_num_indices;
     std::vector<glm::vec3> m_positions;

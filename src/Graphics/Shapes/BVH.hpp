@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <src/Core.hpp>
 #include <src/Graphics/AABB.hpp>
-#include <src/Graphics/Shapes/Trimesh.hpp>
+#include <src/Graphics/Trimesh.hpp>
 #include <stack>
 #include <vector>
 
@@ -42,11 +42,18 @@ namespace shape {
                 aabb = aabb.Union(m_instance->GetPrimitiveAabb(prim_index));
                 centers.push_back((prim_aabb.min[axis] + prim_aabb.max[axis]) * 0.5f);
             }
+            m_nodes[node_index].aabb = aabb;
+
+            if (primitives.size() < MAX_PRIMITIVES_PER_LEAF) {
+                BuildBvhLeaf(node_index, primitives, start, end);
+                return;
+            }
+
             float median_along_axis = 0.0f;
 
             std::sort(centers.begin(), centers.end());
             if ((centers.size() % 2) == 0) {
-                median_along_axis = (centers[centers.size() / 2] + centers[centers.size() / 2 + 1]) * 0.5f;
+                median_along_axis = (centers[centers.size() / 2 - 1] + centers[centers.size() / 2]) * 0.5f;
             } else {
                 median_along_axis = centers[centers.size() / 2];
             }
@@ -64,10 +71,8 @@ namespace shape {
                 }
             }
 
-            m_nodes[node_index].aabb = aabb;
 
-            if (left_primitives.empty() || right_primitives.empty() || depth >= MAX_DEPTH ||
-                primitives.size() < MAX_PRIMITIVES_PER_LEAF) {
+            if (left_primitives.empty() || right_primitives.empty()) {
                 BuildBvhLeaf(node_index, primitives, start, end);
             } else {
                 m_nodes[node_index].left = static_cast<uint32_t>(m_nodes.size());
@@ -94,10 +99,8 @@ namespace shape {
 
         BVH(const MeshInstance* instance) : m_instance(instance) {
             std::vector<uint32_t> all_primitives;
-            all_primitives.reserve(instance->m_num_indices / 3);
-            for (uint32_t i = 0; i < instance->m_num_indices; i += 3) {
-                all_primitives.push_back(i);
-            }
+            all_primitives.resize(instance->m_num_indices / 3);
+            std::iota(all_primitives.begin(), all_primitives.end(), 0U);
             m_nodes.reserve(all_primitives.size());
             m_nodes.emplace_back(); // root node
             BuildBvhRecursive(0, all_primitives, 0U, static_cast<uint32_t>(all_primitives.size()), 0, AXIS_X);
@@ -111,16 +114,16 @@ namespace shape {
             uint32_t num_intersections = 0;
 
             float closest_prim_t = INFINITY;
-            float closest_aabb_t = INFINITY;
+            float closest_aabb_out_t = INFINITY;
             Intersection best_intersection;
 
             bool b_hit = false;
             while (stack_ptr > 0) {
                 const BvhNode* node = stack[--stack_ptr];
                 float t;
-                if (node->aabb.RayIntersects(ray, &t) && t < closest_aabb_t) {
+                if (node->aabb.RayIntersects(ray, nullptr, &t) && t < closest_aabb_out_t) {
                     ++num_intersections;
-                    closest_aabb_t = t;
+                    closest_aabb_out_t = t;
                     if (node->left > 0 && stack_ptr < MAX_DEPTH) {
                         stack[stack_ptr++] = &m_nodes[node->left];
                     }
@@ -147,12 +150,7 @@ namespace shape {
         }
         DOOB_NODISCARD AABB GetAABB() const override { return m_nodes.empty() ? AABB{} : m_nodes[0].aabb; }
         DOOB_NODISCARD Fragment SampleFragment(const Intersection& intersection) const override {
-            return {
-                .position = intersection.position,
-                .normal = intersection.flat_normal,
-                .tangent = {},
-                .uv = {},
-            };
+            return m_instance->SampleFragment(intersection);
         }
 
         glm::vec3 m_min;

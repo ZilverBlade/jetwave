@@ -4,7 +4,7 @@
 
 namespace devs_out_of_bounds {
 namespace shape {
-    class Trimesh : public IShape {
+    class Trimesh : NoCopy {
     public:
         Trimesh(const MeshInstance* mesh_instance, const std::vector<uint32_t>& primitives) {
             m_primitive_ptr = new uint32_t[primitives.size()];
@@ -12,13 +12,39 @@ namespace shape {
             for (size_t i = 0; i < primitives.size(); ++i) {
                 m_primitive_ptr[i] = primitives[i];
             }
-            m_attrib_ptr = mesh_instance->m_attributes.data();
             m_position_ptr = mesh_instance->m_positions.data();
             m_index_ptr = mesh_instance->m_index_ptr;
         }
-        ~Trimesh() override { delete[] m_primitive_ptr; }
+        ~Trimesh() { delete[] m_primitive_ptr; }
 
-        DOOB_NODISCARD bool Intersect(const Ray& ray, Intersection* out_intersection) const override {
+        Trimesh(Trimesh&& other) noexcept {
+            m_primitive_ptr = other.m_primitive_ptr;
+            m_primitive_count = other.m_primitive_count;
+            m_position_ptr = other.m_position_ptr;
+            m_index_ptr = other.m_index_ptr;
+            other.m_primitive_ptr = nullptr;
+            other.m_primitive_count = 0;
+            other.m_position_ptr = nullptr;
+            other.m_index_ptr = nullptr;
+        }
+        Trimesh& operator=(Trimesh&& other) noexcept {
+            if (this != &other) {
+                if (m_primitive_ptr) {
+                    delete[] m_primitive_ptr;
+                }
+                m_primitive_ptr = other.m_primitive_ptr;
+                m_primitive_count = other.m_primitive_count;
+                m_position_ptr = other.m_position_ptr;
+                m_index_ptr = other.m_index_ptr;
+                other.m_primitive_ptr = nullptr;
+                other.m_primitive_count = 0;
+                other.m_position_ptr = nullptr;
+                other.m_index_ptr = nullptr;
+            }
+            return *this;
+        }
+
+        DOOB_NODISCARD DOOB_FORCEINLINE bool Intersect(const Ray& ray, Intersection* out_intersection) const {
             bool b_hit = false;
 
             bool closest_b_backfacing = false;
@@ -98,47 +124,12 @@ namespace shape {
             return b_hit;
         }
 
-        DOOB_NODISCARD Fragment SampleFragment(const Intersection& intersection) const override {
-            float u = intersection.barycentric.x;
-            float v = intersection.barycentric.y;
-            float w = 1.0f - u - v;
-
-            uint32_t i, j, k;
-            i = m_index_ptr[intersection.primitive * 3 + 0];
-            j = m_index_ptr[intersection.primitive * 3 + 1];
-            k = m_index_ptr[intersection.primitive * 3 + 2];
-
-            return {
-                .position = u * m_position_ptr[i] + v * m_position_ptr[j] + w * m_position_ptr[k],
-                .normal = u * m_attrib_ptr[i].normal + v * m_attrib_ptr[j].normal + w * m_attrib_ptr[k].normal,
-                .tangent = u * m_attrib_ptr[i].tangent + v * m_attrib_ptr[j].tangent + w * m_attrib_ptr[k].tangent,
-                .uv = u * m_attrib_ptr[i].uv + v * m_attrib_ptr[j].uv + w * m_attrib_ptr[k].uv,
-
-                .b_front_face = intersection.b_front_facing != 0,
-            };
-        }
-
-        DOOB_NODISCARD AABB GetAABB() const override {
-            glm::vec3 min = { INFINITY, INFINITY, INFINITY }, max = { -INFINITY, -INFINITY, -INFINITY };
-            for (uint32_t i = 0; i < m_primitive_count; ++i) {
-                uint32_t idx = m_primitive_ptr[i];
-                for (uint32_t j = 0; j < 3; ++j) {
-                    uint32_t vertex_index = m_index_ptr[idx * 3 + j];
-                    min = glm::min(m_position_ptr[vertex_index], min);
-                    max = glm::max(m_position_ptr[vertex_index], max);
-                }
-            }
-            return AABB(min, max);
-        }
-
-
     private:
-        const VertexAttributes* m_attrib_ptr;
-        const glm::vec3* m_position_ptr;
-        const uint32_t* m_index_ptr;
+        const glm::vec3* m_position_ptr = nullptr;
+        const uint32_t* m_index_ptr = nullptr;
 
-        uint32_t* m_primitive_ptr;
-        uint32_t m_primitive_count;
+        uint32_t* m_primitive_ptr = nullptr;
+        uint32_t m_primitive_count = 0;
     };
 } // namespace shape
 } // namespace devs_out_of_bounds
