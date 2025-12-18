@@ -29,10 +29,6 @@ namespace material {
             }
 
             vec4 base_color = base_color_factor;
-            // FIXME: srgb
-            base_color.r = pow(base_color.r, 2.2f);
-            base_color.g = pow(base_color.g, 2.2f);
-            base_color.b = pow(base_color.b, 2.2f);
             if (sampler_state && base_color_texture) {
                 vec4 col = sampler_state->Sample(base_color_texture, input.uv);
 
@@ -52,7 +48,7 @@ namespace material {
                 out_bsdf->Add<bxdf::PassthroughBtdf>(glm::vec3(1, 1, 1), base_color.a);
             }
 
-            glm::vec3 emission = pow(emissive_factor, vec3(2.2f)); // FIXME: srgb
+            glm::vec3 emission = emissive_factor; 
 
             glm::vec3 world_normal = input.normal;
             if (!input.b_front_face) {
