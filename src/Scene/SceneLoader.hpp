@@ -44,6 +44,7 @@ struct SceneAssets {
 
     Sky sky;
     Camera camera;
+    float fov_degrees = 90.0f;
 
     void Clear() {
         misc_data.clear();

@@ -1,14 +1,14 @@
 #pragma once
+#include <src/Graphics/BxDFs/Common/Microfacet.hpp>
 #include <src/Graphics/IBxDF.hpp>
 #include <src/Graphics/Random.hpp>
-#include <src/Graphics/BxDFs/Common/Microfacet.hpp>
 
 namespace devs_out_of_bounds {
 namespace bxdf {
     class GgxMicrofacetBrdf : public IBxDF {
     public:
         GgxMicrofacetBrdf(const glm::vec3& f0, float roughness, const glm::vec3& n)
-            : m_f0(f0), m_alpha(glm::clamp(roughness * roughness, 1e-12f, 1.f)), m_normal(n) {}
+            : m_f0(f0), m_alpha(glm::clamp(roughness * roughness, 1e-3f, 1.f)), m_normal(n) {}
 
 
         glm::vec3 EvaluateCos(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {

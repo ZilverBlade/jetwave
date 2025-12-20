@@ -82,6 +82,8 @@ namespace material {
 
                         vec3 map_normal = normalize(vec3(vec2(nor) * normal_strength, nor.z));
                         world_normal = normalize(TBN * map_normal);
+                    } else {
+                        world_normal = normalize(input.normal);
                     }
                 } else {
                     world_normal = normalize(input.normal);

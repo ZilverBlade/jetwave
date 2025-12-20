@@ -8,7 +8,7 @@ namespace bxdf {
     class GgxMicrofacetBtdf : public IBxDF {
     public:
         GgxMicrofacetBtdf(const glm::vec3& transmissionColor, float ior, float roughness, const glm::vec3& n)
-            : m_t(transmissionColor), m_normal(n), m_eta(ior), m_alpha(std::max(1e-12f, roughness * roughness)) {}
+            : m_t(transmissionColor), m_normal(n), m_eta(ior), m_alpha(std::max(1e-3f, roughness * roughness)) {}
 
         glm::vec3 EvaluateCos(const glm::vec3& wo, const glm::vec3& wm, const glm::vec3& wi) const override {
             if (SameHemisphere(wo, wi, m_normal))

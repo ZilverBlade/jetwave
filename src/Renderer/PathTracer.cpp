@@ -20,8 +20,6 @@ static material::GridMaterial g_grid_mat;
 static material::GridCutoutMaterial g_cookie_mat;
 static std::vector<light::PointLight> g_point_lights;
 
-constexpr float CAMERA_FOV_DEG = 90.0f;
-
 PathTracer::PathTracer() {
     m_scene = new Scene();
 
@@ -113,7 +111,7 @@ void PathTracer::OnUpdate(float frame_time) {
             if (glm::dot(camera_move, camera_move) > std::numeric_limits<float>::epsilon()) {
                 camera.SetPosition(camera.GetPosition() + 8.0f * glm::normalize(camera_move) * frame_time);
             }
-            camera.LookDir(forward, CAMERA_FOV_DEG);
+            camera.LookDir(forward, m_parameters.assets.fov_degrees);
         }
 
 
@@ -372,7 +370,7 @@ glm::vec3 PathTracer::SampleSky(const glm::vec3& direction) const {
 void PathTracer::RebuildAccelerationStructures() {}
 void PathTracer::Cleanup() { m_parameters.assets.Clear(); }
 
-void PathTracer::LoadScene() { SceneLoader::Load("assets/scenes/test-gltf.json", *m_scene, m_parameters.assets); }
+void PathTracer::LoadScene() { SceneLoader::Load("assets/scenes/chess-gltf.json", *m_scene, m_parameters.assets); }
 void PathTracer::BakeScene() {
     m_drawable_actors.clear();
     m_light_actors.clear();

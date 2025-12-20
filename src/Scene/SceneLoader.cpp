@@ -141,6 +141,7 @@ bool SceneLoader::Load(const std::string& filepath, Scene& scene, SceneAssets& a
         assets.camera.SetPosition(position);
         assets.camera.SetSensor(aperture, inv_shutter_speed, iso);
         assets.camera.SetLogExposure(log_exposure);
+        assets.fov_degrees = fov;
     }
 
     if (j.contains("sky")) {
@@ -345,7 +346,7 @@ bool SceneLoader::LoadGltf(
                 m->m_vertices.push_back(Vertex{
                     .position = result.positions[i],
                     .normal = result.normals.empty() ? glm::vec3{} : result.normals[i],
-                    .tangent = result.tangents.empty() ? glm::vec3{} : result.tangents[i],
+                    .tangent = result.tangents.empty() ? glm::vec3{} : result.tangents[i] * result.tangents[i].w,
                     .uv = (result.uvs.empty() || result.uvs[0].empty()) ? glm::vec2{} : result.uvs[0][i],
                 });
             }
@@ -375,20 +376,27 @@ bool SceneLoader::LoadGltf(
     for (auto& material : data.materials) {
         material::GltfMaterial mat;
         mat.base_color_factor = material.albedoColor;
-        mat.base_color_texture = material.albedoTexture ? gltf_texture_indices[*material.albedoTexture] : nullptr;
+        mat.base_color_texture =
+            material.albedoTexture ? gltf_texture_indices[data.textures[*material.albedoTexture].imageIndex] : nullptr;
 
         mat.roughness_factor = material.roughnessFactor;
         mat.metallic_factor = material.metallicFactor;
         mat.metallic_roughness_texture =
-            material.metallicRoughnessTexture ? gltf_texture_indices[*material.metallicRoughnessTexture] : nullptr;
+            material.metallicRoughnessTexture
+                ? gltf_texture_indices[data.textures[*material.metallicRoughnessTexture].imageIndex]
+                : nullptr;
 
         mat.emissive_factor = material.emissiveFactor;
         mat.emissive_intensity = material.emissiveStrength * 100000.0f;
-        mat.emissive_texture = material.emissiveTexture ? gltf_texture_indices[*material.emissiveTexture] : nullptr;
+        mat.emissive_texture = material.emissiveTexture
+                                   ? gltf_texture_indices[data.textures[*material.emissiveTexture].imageIndex]
+                                   : nullptr;
         mat.normal_strength = 1.0f;
-        mat.normal_texture = material.normalTexture ? gltf_texture_indices[*material.normalTexture] : nullptr;
+        mat.normal_texture =
+            material.normalTexture ? gltf_texture_indices[data.textures[*material.normalTexture].imageIndex] : nullptr;
         mat.b_double_sided = material.doubleSided;
         mat.alpha_cutoff = material.alphaCutoff;
+
         switch (material.alphaMode) {
         case model_loader::AlphaMode::Opaque:
             mat.blend_mode = material::GltfMaterial::BlendMode::Opaque;
@@ -485,9 +493,9 @@ ITextureView* SceneLoader::LoadTexture(const std::string& texturepath, SceneAsse
             float* src_ptr = data + i * c;
             uint8_t* dst_ptr = p_texture_data + i * 4;
 
-            float r = src_ptr[0];
-            float g = src_ptr[1];
-            float b = src_ptr[2];
+            float r = glm::clamp(src_ptr[0], 0.f, static_cast<float>(65'504 - 1));
+            float g = glm::clamp(src_ptr[1], 0.f, static_cast<float>(65'504 - 1));
+            float b = glm::clamp(src_ptr[2], 0.f, static_cast<float>(65'504 - 1));
 
             *reinterpret_cast<uint32_t*>(dst_ptr) = glm::packF3x9_E1x5({ r, g, b });
         }

@@ -1,0 +1,32 @@
+{
+    "camera": {
+        "position": [ 0.0, 2.0, -9.0 ],
+        "direction": [ 0.0, 0.0, 1.0 ],
+
+        "fieldOfView": 60.0,
+        "aperture": 19.0,
+        "invShutterSpeed": 60,
+        "iso": 200.0,
+        "logExposure": 0.5
+    },
+    "sky": {
+        "skybox": "assets/skyboxes/thatch_chapel_2k.hdr",
+        "lux": 8000.0
+    },
+    "actors": [
+
+    ],
+    "gltf": [
+        {
+            "file": "assets/meshes/ABeautifulGame/ABeautifulGame.gltf",
+            "offset": {
+                "position": [ 0.0, 0.0, 0.0 ],
+                "rotationXYZ": [ 0.0, 0.0, 0.0 ],
+                "scale": [ 20.0, 20.0, 20.0 ]
+            }
+        }
+    ],
+    "lights": [
+
+    ]
+}
